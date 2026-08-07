@@ -308,6 +308,50 @@ export default function App() {
   };
   const currentSubjectOverallProgress = calculateSubjectProgress(currentSubObj);
 
+  // --- CHART DATA PREPARATION ---
+  
+  // 1. Pie Chart: Time per Subject
+  const pieDataMap = {};
+  sessions.forEach(s => {
+    if (!pieDataMap[s.subjectId]) pieDataMap[s.subjectId] = 0;
+    pieDataMap[s.subjectId] += s.durationSeconds;
+  });
+  const pieData = Object.keys(pieDataMap).map(subId => {
+    const sub = SUBJECTS.find(s => s.id === subId);
+    return { name: sub?.name || 'Unknown', value: pieDataMap[subId], color: sub?.color || '#fff' };
+  }).filter(d => d.value > 0);
+
+  // 2. Bar Chart: Chapters per Subject
+  const barData = SUBJECTS.map(sub => {
+    let completed = 0;
+    sub.chapters.forEach(c => { if (chapterProgress[c.id] === 100) completed++; });
+    return { name: sub.name, completed, total: sub.chapters.length, color: sub.color };
+  });
+
+  // 3. Heatmap Data (Last 60 Days)
+  const heatmapData = [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const dailyDurations = {};
+  sessions.forEach(s => {
+    const d = new Date(s.date);
+    d.setHours(0,0,0,0);
+    const key = d.getTime();
+    if (!dailyDurations[key]) dailyDurations[key] = 0;
+    dailyDurations[key] += s.durationSeconds;
+  });
+  for (let i = 59; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+    const key = d.getTime();
+    const duration = dailyDurations[key] || 0;
+    let level = 0;
+    if (duration > 0) level = 1;
+    if (duration > 1800) level = 2; // >30 mins
+    if (duration > 3600) level = 3; // >1 hour
+    if (duration > 7200) level = 4; // >2 hours
+    heatmapData.push({ date: d.toLocaleDateString(), duration, level });
+  }
+
   return (
     <div className="app-container">
       {/* LEFT PANEL */}
@@ -386,7 +430,54 @@ export default function App() {
 
         {activeTab === 'stats' && (
           <div className="flex-col gap-6">
-            <div className="p-5 rounded-lg border border-white/5 bg-black/20">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-xl font-bold"><Clock size={20} className="inline mr-2 text-blue-400"/> Total Focus: {formatTime(totalStudyTime)}</h3>
+            </div>
+            
+            {/* Heatmap */}
+            <div className="chart-container" style={{ marginTop: 0 }}>
+              <h3 className="text-sm font-semibold text-white/80 mb-3">Study Heatmap (Last 60 Days)</h3>
+              <div className="heatmap-grid">
+                {heatmapData.map((d, i) => (
+                  <div key={i} className={`heatmap-cell level-${d.level}`} title={`${d.date}: ${formatTime(d.duration)}`} />
+                ))}
+              </div>
+            </div>
+
+            {/* Charts Row */}
+            {pieData.length > 0 && (
+              <div className="chart-container flex-col items-center">
+                <h3 className="text-sm font-semibold text-white/80 mb-3 w-full">Time Distribution</h3>
+                <div style={{ width: '100%', height: 220 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                      </Pie>
+                      <Tooltip formatter={(val) => formatTime(val)} contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #333' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            <div className="chart-container flex-col">
+              <h3 className="text-sm font-semibold text-white/80 mb-3">Chapter Velocity</h3>
+              <div style={{ width: '100%', height: 250 }}>
+                <ResponsiveContainer>
+                  <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fill: '#a1a1aa', fontSize: 10 }} interval={0} />
+                    <YAxis tick={{ fill: '#a1a1aa', fontSize: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #333' }} />
+                    <Bar dataKey="completed" name="Completed" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total" name="Total Chapters" fill="#a1a1aa" opacity={0.2} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Old Stats Layout */}
+            <div className="p-5 rounded-lg border border-white/5 bg-black/20 mt-4">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="flex items-center text-base"><Target size={18} className="mr-2 text-blue-400"/> Exam Prediction</h3>
                 <input type="date" value={examDate} onChange={e => {setExamDate(e.target.value); localStorage.setItem('cbse_exam_date', e.target.value);}} className="text-sm p-1 py-1" />
@@ -400,7 +491,7 @@ export default function App() {
             </div>
 
             {revisionsDue.length > 0 && (
-              <div className="p-4 rounded-lg border border-orange-500/20 bg-orange-500/5">
+              <div className="p-4 rounded-lg border border-orange-500/20 bg-orange-500/5 mt-4">
                 <h3 className="flex items-center text-base mb-3 text-orange-400"><BrainCircuit size={18} className="mr-2"/> SRS Revisions Due Today</h3>
                 <ul className="text-sm space-y-2">
                   {revisionsDue.map((rev, i) => (
@@ -412,11 +503,6 @@ export default function App() {
                 </ul>
               </div>
             )}
-
-            <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-6">
-              <h3 className="text-base"><Clock size={18} className="inline mr-2"/> Total Study Time</h3>
-              <p className="text-xl font-bold">{formatTime(totalStudyTime)}</p>
-            </div>
           </div>
         )}
 
