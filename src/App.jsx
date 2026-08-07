@@ -155,8 +155,10 @@ export default function App() {
   };
 
   const linkDevice = async () => {
-    const newId = prompt("Enter a unique Sync ID (e.g. aryan2027). Use the same ID on all devices to sync automatically:");
+    let newId = prompt("Enter a unique Sync ID (e.g. aryan2027). Use the same ID on all devices to sync automatically:");
     if (!newId) return;
+    newId = newId.trim().toLowerCase(); // FIX: Prevent mobile auto-capitalization from breaking sync
+    
     setSyncId(newId);
     localStorage.setItem('cbse_sync_id', newId);
     await fetchFromCloud(newId);
