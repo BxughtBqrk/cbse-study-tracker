@@ -181,25 +181,34 @@ export default function App() {
     }
   };
 
-  const handleCloudSync = () => {
+  const handleCloudSync = async () => {
     const data = { s: sessions, p: chapterProgress, c: chapterCompletions };
     const encoded = btoa(JSON.stringify(data));
-    prompt("Copy this Sync Code:", encoded);
+    try {
+      await navigator.clipboard.writeText(encoded);
+      alert("✅ Sync Code copied to clipboard! Send this code to your other device.");
+    } catch (err) {
+      // Fallback if clipboard fails
+      prompt("Clipboard access denied. Please manually copy this code:", encoded);
+    }
   };
 
-  const handleCloudImport = () => {
-    const code = prompt("Paste your Sync Code:");
-    if (code) {
-      try {
-        const decoded = JSON.parse(atob(code));
-        if (decoded.s) setSessions(decoded.s);
-        if (decoded.p) setChapterProgress(decoded.p);
-        if (decoded.c) setChapterCompletions(decoded.c);
-        localStorage.setItem('cbse_study_sessions', JSON.stringify(decoded.s));
-        localStorage.setItem('cbse_chapter_progress', JSON.stringify(decoded.p));
-        localStorage.setItem('cbse_chapter_completions', JSON.stringify(decoded.c));
-        alert("Sync successful!");
-      } catch(e) { alert("Invalid Sync Code!"); }
+  const handleCloudImport = async () => {
+    try {
+      const code = await navigator.clipboard.readText();
+      const codeFromUser = prompt("Paste your Sync Code here (or press OK if it's already in your clipboard):", code || "");
+      if (!codeFromUser) return;
+      
+      const decoded = JSON.parse(atob(codeFromUser));
+      if (decoded.s) setSessions(decoded.s);
+      if (decoded.p) setChapterProgress(decoded.p);
+      if (decoded.c) setChapterCompletions(decoded.c);
+      localStorage.setItem('cbse_study_sessions', JSON.stringify(decoded.s));
+      localStorage.setItem('cbse_chapter_progress', JSON.stringify(decoded.p));
+      localStorage.setItem('cbse_chapter_completions', JSON.stringify(decoded.c));
+      alert("✅ Stats successfully synced!");
+    } catch(e) { 
+      alert("❌ Invalid Sync Code! Make sure you copied the entire code."); 
     }
   };
 
