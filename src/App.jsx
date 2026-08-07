@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, Upload, Download, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, Upload, Download, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff, Cloud, CloudOff } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import Webcam from "react-webcam";
 import * as tf from '@tensorflow/tfjs';
 import * as blazeface from '@tensorflow-models/blazeface';
 import { SYLLABUS } from './syllabusData';
+import { supabase } from './supabaseClient';
 import './index.css';
 
-// Convert SYLLABUS object into array, maintaining books and flattening chapters for stats
 const SUBJECTS = Object.keys(SYLLABUS).map(key => ({
   id: key, 
   name: SYLLABUS[key].name, 
@@ -37,6 +37,10 @@ export default function App() {
   const [sessions, setSessions] = useState([]);
   const [chapterProgress, setChapterProgress] = useState({});
   const [chapterCompletions, setChapterCompletions] = useState({}); 
+
+  // CLOUD SYNC STATE
+  const [syncId, setSyncId] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const timerRef = useRef(null);
   const webcamRef = useRef(null);
@@ -99,6 +103,7 @@ export default function App() {
     } catch(e) {}
   };
 
+  // INITIAL LOAD
   useEffect(() => {
     const s = localStorage.getItem('cbse_study_sessions');
     if (s) try { setSessions(JSON.parse(s)); } catch(e){}
@@ -108,7 +113,59 @@ export default function App() {
     if (c) try { setChapterCompletions(JSON.parse(c)); } catch(e){}
     const ed = localStorage.getItem('cbse_exam_date');
     if (ed) setExamDate(ed);
+    
+    const sid = localStorage.getItem('cbse_sync_id');
+    if (sid) {
+      setSyncId(sid);
+      fetchFromCloud(sid);
+    }
   }, []);
+
+  const fetchFromCloud = async (id) => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.from('user_stats').select('*').eq('sync_id', id).single();
+      if (data) {
+        setSessions(data.sessions || []);
+        setChapterProgress(data.progress || {});
+        setChapterCompletions(data.completions || {});
+        localStorage.setItem('cbse_study_sessions', JSON.stringify(data.sessions || []));
+        localStorage.setItem('cbse_chapter_progress', JSON.stringify(data.progress || {}));
+        localStorage.setItem('cbse_chapter_completions', JSON.stringify(data.completions || {}));
+      }
+    } catch(e) {
+      console.error("Fetch error", e);
+    }
+    setIsSyncing(false);
+  };
+
+  const saveToCloud = async (idToUse, s, p, c) => {
+    if (!idToUse) return;
+    setIsSyncing(true);
+    try {
+      await supabase.from('user_stats').upsert({
+        sync_id: idToUse,
+        sessions: s,
+        progress: p,
+        completions: c,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'sync_id' });
+    } catch(e) { console.error("Save error", e); }
+    setIsSyncing(false);
+  };
+
+  const linkDevice = async () => {
+    const newId = prompt("Enter a unique Sync ID (e.g. aryan2027). Use the same ID on all devices to sync automatically:");
+    if (!newId) return;
+    setSyncId(newId);
+    localStorage.setItem('cbse_sync_id', newId);
+    await fetchFromCloud(newId);
+    // If empty in cloud but we have local, push it immediately
+    if (sessions.length > 0 || Object.keys(chapterProgress).length > 0) {
+      saveToCloud(newId, sessions, chapterProgress, chapterCompletions);
+    }
+    alert("Device linked successfully! Your stats will now sync automatically.");
+  };
 
   useEffect(() => {
     if (isRunning) {
@@ -156,6 +213,7 @@ export default function App() {
     const updated = [...sessions, newSession];
     setSessions(updated);
     localStorage.setItem('cbse_study_sessions', JSON.stringify(updated));
+    saveToCloud(syncId, updated, chapterProgress, chapterCompletions);
     
     setIsRunning(false); setIsBreak(false);
     if (!isPomodoro) setTime(0);
@@ -167,48 +225,24 @@ export default function App() {
     setChapterProgress(updatedProg);
     localStorage.setItem('cbse_chapter_progress', JSON.stringify(updatedProg));
 
+    let updatedComp = chapterCompletions;
     if (p === 100 && !chapterCompletions[chapId]) {
-      const updatedComp = { ...chapterCompletions, [chapId]: new Date().toISOString() };
+      updatedComp = { ...chapterCompletions, [chapId]: new Date().toISOString() };
       setChapterCompletions(updatedComp);
       localStorage.setItem('cbse_chapter_completions', JSON.stringify(updatedComp));
     }
+    
+    saveToCloud(syncId, sessions, updatedProg, updatedComp);
   };
 
   const clearData = () => {
     if (confirm('Delete all data?')) {
       setSessions([]); setChapterProgress({}); setChapterCompletions({});
+      setSyncId('');
       localStorage.clear();
-    }
-  };
-
-  const handleCloudSync = async () => {
-    const data = { s: sessions, p: chapterProgress, c: chapterCompletions };
-    const encoded = btoa(JSON.stringify(data));
-    try {
-      await navigator.clipboard.writeText(encoded);
-      alert("✅ Sync Code copied to clipboard! Send this code to your other device.");
-    } catch (err) {
-      // Fallback if clipboard fails
-      prompt("Clipboard access denied. Please manually copy this code:", encoded);
-    }
-  };
-
-  const handleCloudImport = async () => {
-    try {
-      const code = await navigator.clipboard.readText();
-      const codeFromUser = prompt("Paste your Sync Code here (or press OK if it's already in your clipboard):", code || "");
-      if (!codeFromUser) return;
-      
-      const decoded = JSON.parse(atob(codeFromUser));
-      if (decoded.s) setSessions(decoded.s);
-      if (decoded.p) setChapterProgress(decoded.p);
-      if (decoded.c) setChapterCompletions(decoded.c);
-      localStorage.setItem('cbse_study_sessions', JSON.stringify(decoded.s));
-      localStorage.setItem('cbse_chapter_progress', JSON.stringify(decoded.p));
-      localStorage.setItem('cbse_chapter_completions', JSON.stringify(decoded.c));
-      alert("✅ Stats successfully synced!");
-    } catch(e) { 
-      alert("❌ Invalid Sync Code! Make sure you copied the entire code."); 
+      if(syncId) {
+        saveToCloud(syncId, [], {}, {});
+      }
     }
   };
 
@@ -277,7 +311,7 @@ export default function App() {
       {/* LEFT PANEL */}
       <div className="glass-panel flex-col justify-center relative">
         {focusWarning && (
-          <div className="absolute top-4 left-4 right-4 bg-red-500/20 border border-red-500 text-red-500 p-3 rounded-md text-center text-sm font-bold flex items-center justify-center gap-2">
+          <div className="absolute top-4 left-4 right-4 bg-red-500/20 border border-red-500 text-red-500 p-3 rounded-md text-center text-sm font-bold flex items-center justify-center gap-2 z-10">
             <AlertTriangle size={16} /> Focus Lost! Timer Paused.
           </div>
         )}
@@ -335,7 +369,7 @@ export default function App() {
         </div>
 
         {isFaceTrackingEnabled && isRunning && !isBreak && (
-          <div className="absolute bottom-4 right-4 w-24 h-24 rounded-lg overflow-hidden border-2 border-white/10 opacity-50">
+          <div className="absolute bottom-4 right-4 w-24 h-24 rounded-lg overflow-hidden border-2 border-white/10 opacity-50 z-0">
              <Webcam audio={false} ref={webcamRef} className="w-full h-full object-cover" />
           </div>
         )}
@@ -422,8 +456,11 @@ export default function App() {
 
         <div className="mt-auto pt-8 flex justify-between items-center border-t border-white/5">
            <div className="flex gap-2">
-             <button onClick={handleCloudSync} className="text-sm py-2 px-3" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }}><Upload size={16} /> Export Code</button>
-             <button onClick={handleCloudImport} className="text-sm py-2 px-3" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }}><Download size={16} /> Import</button>
+             <button onClick={linkDevice} className="text-sm py-2 px-3 flex items-center" style={{ background: syncId ? '#10b98133' : 'transparent', border: syncId ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)' }}>
+               {syncId ? <Cloud size={16} className="mr-2 text-green-400" /> : <CloudOff size={16} className="mr-2" />}
+               {syncId ? `Synced to: ${syncId}` : 'Link Cloud Device'}
+               {isSyncing && <span className="ml-2 text-xs opacity-50">(syncing...)</span>}
+             </button>
            </div>
            <button onClick={clearData} className="danger" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}><Trash2 size={16} /> Reset</button>
         </div>
