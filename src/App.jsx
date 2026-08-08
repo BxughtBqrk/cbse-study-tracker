@@ -169,18 +169,27 @@ export default function App() {
     alert("Device linked successfully! Your stats will now sync automatically.");
   };
 
+  const lastTickRef = useRef(Date.now());
+
   useEffect(() => {
     if (isRunning) {
+      lastTickRef.current = Date.now();
       timerRef.current = setInterval(() => {
-        setTime((prev) => {
-          if (isPomodoro) {
-            if (prev <= 1) {
-              playChime(); setIsRunning(false); setIsBreak(!isBreak);
-              return isBreak ? 1500 : 300; 
-            }
-            return prev - 1;
-          } else return prev + 1;
-        });
+        const now = Date.now();
+        const delta = Math.round((now - lastTickRef.current) / 1000);
+        
+        if (delta >= 1) {
+          lastTickRef.current = now;
+          setTime((prev) => {
+            if (isPomodoro) {
+              if (prev - delta <= 0) {
+                playChime(); setIsRunning(false); setIsBreak(!isBreak);
+                return isBreak ? 1500 : 300; 
+              }
+              return prev - delta;
+            } else return prev + delta;
+          });
+        }
       }, 1000);
     } else clearInterval(timerRef.current);
     return () => clearInterval(timerRef.current);
