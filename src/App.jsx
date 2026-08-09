@@ -308,6 +308,10 @@ export default function App() {
 
   const currentSubObj = SUBJECTS.find(s => s.id === activeSubject);
   const totalStudyTime = sessions.reduce((acc, curr) => acc + curr.durationSeconds, 0);
+  const todayStr = new Date().toLocaleDateString();
+  const todayStudyTime = sessions.reduce((acc, curr) => {
+    return new Date(curr.date).toLocaleDateString() === todayStr ? acc + curr.durationSeconds : acc;
+  }, 0);
 
   const calculateSubjectProgress = (subjectObj) => {
     if (!subjectObj || subjectObj.chapters.length === 0) return 0;
@@ -439,8 +443,15 @@ export default function App() {
 
         {activeTab === 'stats' && (
           <div className="flex-col gap-6">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xl font-bold"><Clock size={20} className="inline mr-2 text-blue-400"/> Total Focus: {formatTime(totalStudyTime)}</h3>
+            <div className="flex gap-4 mb-2">
+              <div className="flex-1 bg-black/20 border border-white/5 p-4 rounded-lg">
+                <p className="text-sm text-white/60 mb-1 flex items-center"><Clock size={14} className="mr-2"/> Today's Focus</p>
+                <h3 className="text-2xl font-bold text-blue-400">{formatTime(todayStudyTime)}</h3>
+              </div>
+              <div className="flex-1 bg-black/20 border border-white/5 p-4 rounded-lg">
+                <p className="text-sm text-white/60 mb-1 flex items-center"><Clock size={14} className="mr-2"/> Total Focus</p>
+                <h3 className="text-2xl font-bold text-green-400">{formatTime(totalStudyTime)}</h3>
+              </div>
             </div>
             
             {/* Heatmap */}
