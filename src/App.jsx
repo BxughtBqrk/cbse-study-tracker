@@ -249,9 +249,12 @@ export default function App() {
   
   useEffect(() => {
     if (isHostageClient && hostageClientId) {
-      const channel = supabase.channel(`hostage_${hostageClientId}`);
-      channel.subscribe((status) => {
+      const channel = supabase.channel(`hostage_${hostageClientId}`, {
+        config: { presence: { key: 'phone' } }
+      });
+      channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          await channel.track({ online: true });
           channel.send({ type: 'broadcast', event: 'status', payload: { connected: true, visible: true } });
         }
       });
@@ -259,7 +262,10 @@ export default function App() {
         channel.send({ type: 'broadcast', event: 'status', payload: { connected: true, visible: document.visibilityState === 'visible' } });
       };
       document.addEventListener('visibilitychange', handleVisibility);
-      return () => document.removeEventListener('visibilitychange', handleVisibility);
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibility);
+        channel.untrack();
+      }
     }
   }, [isHostageClient, hostageClientId]);
 
@@ -272,7 +278,17 @@ export default function App() {
         if (!hostageSessionId) {
           const newId = Math.random().toString(36).substring(7);
           setHostageSessionId(newId);
-          const channel = supabase.channel(`hostage_${newId}`);
+          const channel = supabase.channel(`hostage_${newId}`, {
+            config: { presence: { key: 'phone' } }
+          });
+          channel.on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState();
+            if (Object.keys(state).length === 0) {
+              setPhoneHiddenWarning(true);
+              setIsRunning(false);
+              playAlertSound();
+            }
+          });
           channel.on('broadcast', { event: 'status' }, (payload) => {
             if (payload.payload.visible) {
               setIsPhoneConnected(true);
