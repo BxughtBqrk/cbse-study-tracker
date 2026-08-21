@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, Upload, Download, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff, Cloud, CloudOff, Smartphone } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
