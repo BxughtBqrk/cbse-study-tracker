@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, Upload, Download, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff, Cloud, CloudOff } from 'lucide-react';
+import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, Upload, Download, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff, Cloud, CloudOff, Smartphone } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { QRCodeSVG } from 'qrcode.react';
 import Webcam from "react-webcam";
 import * as tf from '@tensorflow/tfjs';
 import * as blazeface from '@tensorflow-models/blazeface';
@@ -42,6 +43,16 @@ export default function App() {
   const [syncId, setSyncId] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // ADVANCED FEATURES STATE
+  const [isSlouching, setIsSlouching] = useState(false);
+  const [showEyeRest, setShowEyeRest] = useState(false);
+  
+  const [isHostageMode, setIsHostageMode] = useState(false);
+  const [hostageSessionId, setHostageSessionId] = useState('');
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
+  const [phoneHiddenWarning, setPhoneHiddenWarning] = useState(false);
+  const hostageChannelRef = useRef(null);
+
   const timerRef = useRef(null);
   const webcamRef = useRef(null);
   const noFaceFrames = useRef(0);
@@ -65,6 +76,18 @@ export default function App() {
         if (predictions.length > 0) {
           noFaceFrames.current = 0;
           if (focusWarning) setFocusWarning(false);
+          
+          // Posture Detection: Calculate face bounding box width
+          const start = predictions[0].topLeft;
+          const end = predictions[0].bottomRight;
+          const faceWidth = end[0] - start[0];
+          
+          // If face width is suspiciously large, they are leaning in too close
+          if (faceWidth > 180) {
+            if (!isSlouching) setIsSlouching(true);
+          } else {
+            if (isSlouching) setIsSlouching(false);
+          }
         } else {
           noFaceFrames.current += 1;
           if (noFaceFrames.current >= 5) { 
@@ -202,6 +225,16 @@ export default function App() {
     }
   }, [isPomodoro, isBreak]);
 
+  // 20-20-20 Eye Strain Protector
+  useEffect(() => {
+    // Every 20 minutes (1200 seconds) of active non-break time
+    if (isRunning && !isBreak && time > 0 && time % 1200 === 0) {
+      setShowEyeRest(true);
+      playChime();
+      setTimeout(() => setShowEyeRest(false), 20000); // 20 seconds
+    }
+  }, [time, isRunning, isBreak]);
+
   useEffect(() => {
     const sub = SUBJECTS.find(s => s.id === activeSubject);
     if (sub && sub.chapters.length > 0) {
@@ -210,8 +243,52 @@ export default function App() {
     }
   }, [activeSubject]);
 
+  // Mobile Client Hostage Logic
+  const isHostageClient = window.location.search.includes('hostage=');
+  const hostageClientId = new URLSearchParams(window.location.search).get('hostage');
+  
+  useEffect(() => {
+    if (isHostageClient && hostageClientId) {
+      const channel = supabase.channel(`hostage_${hostageClientId}`);
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({ type: 'broadcast', event: 'status', payload: { connected: true, visible: true } });
+        }
+      });
+      const handleVisibility = () => {
+        channel.send({ type: 'broadcast', event: 'status', payload: { connected: true, visible: document.visibilityState === 'visible' } });
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+      return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }
+  }, [isHostageClient, hostageClientId]);
+
   const toggleTimer = () => {
-    if (!isRunning) { setFocusWarning(false); noFaceFrames.current = 0; }
+    if (!isRunning) { 
+      setFocusWarning(false); 
+      noFaceFrames.current = 0; 
+      
+      if (isHostageMode && !isPhoneConnected) {
+        if (!hostageSessionId) {
+          const newId = Math.random().toString(36).substring(7);
+          setHostageSessionId(newId);
+          const channel = supabase.channel(`hostage_${newId}`);
+          channel.on('broadcast', { event: 'status' }, (payload) => {
+            if (payload.payload.visible) {
+              setIsPhoneConnected(true);
+              setPhoneHiddenWarning(false);
+              setIsRunning(true);
+            } else {
+              setPhoneHiddenWarning(true);
+              setIsRunning(false);
+              playAlertSound();
+            }
+          }).subscribe();
+          hostageChannelRef.current = channel;
+        }
+        return; // Don't start timer immediately, wait for phone to connect
+      }
+    }
     setIsRunning(!isRunning);
   };
 
@@ -365,13 +442,49 @@ export default function App() {
     heatmapData.push({ date: d.toLocaleDateString(), duration, level });
   }
 
+  if (isHostageClient) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-red-900 text-white text-center p-8">
+        <AlertTriangle size={64} className="mb-6 animate-pulse"/>
+        <h1 className="text-3xl font-bold mb-4">PHONE LOCKED</h1>
+        <p className="text-xl">Do not close this tab or turn off your screen.</p>
+        <p className="mt-8 opacity-70">If you leave this page, your desktop timer will pause and an alarm will sound.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
+      {showEyeRest && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center text-white">
+          <Eye size={80} className="mb-6 animate-bounce text-green-400"/>
+          <h1 className="text-4xl font-bold mb-4">20-20-20 Rule!</h1>
+          <p className="text-xl">Look at something 20 feet away to protect your eyes.</p>
+          <p className="mt-8 text-gray-500">Screen will unlock automatically...</p>
+        </div>
+      )}
+
       {/* LEFT PANEL */}
-      <div className="glass-panel flex-col justify-center relative">
+      <div className={`glass-panel flex-col justify-center relative transition-all duration-500 ${isSlouching ? 'blur-md grayscale' : ''}`}>
+        
+        {isSlouching && !showEyeRest && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 rounded-[24px]">
+            <AlertTriangle size={64} className="text-orange-500 mb-4 animate-pulse"/>
+            <h2 className="text-2xl font-bold text-white">POSTURE WARNING</h2>
+            <p className="text-white/80">Sit back! You are too close to the screen.</p>
+          </div>
+        )}
+
         {focusWarning && (
           <div className="absolute top-4 left-4 right-4 bg-red-500/20 border border-red-500 text-red-500 p-3 rounded-md text-center text-sm font-bold flex items-center justify-center gap-2 z-10">
-            <AlertTriangle size={16} /> Focus Lost! Timer Paused.
+            <AlertTriangle size={16} /> Face Lost! Timer Paused.
+          </div>
+        )}
+
+        {phoneHiddenWarning && (
+          <div className="absolute top-16 left-4 right-4 bg-red-900/40 border border-red-500 text-red-300 p-3 rounded-md text-center text-sm font-bold flex flex-col items-center justify-center gap-2 z-10">
+            <div className="flex items-center"><AlertTriangle size={16} className="mr-2"/> PHONE UNLOCKED! Timer Paused.</div>
+            <p className="text-xs font-normal">Re-open the tracker tab on your phone to resume.</p>
           </div>
         )}
 
@@ -397,24 +510,42 @@ export default function App() {
             </select>
           </div>
 
-          <div className="text-center mb-4">
+          <div className="text-center mb-4 flex justify-center gap-4">
             <button 
-              className="text-xs flex items-center justify-center mx-auto" 
+              className="text-xs flex items-center justify-center" 
               style={{ background: 'transparent', color: isFaceTrackingEnabled ? '#10b981' : '#a1a1aa' }}
               onClick={() => setIsFaceTrackingEnabled(!isFaceTrackingEnabled)}
             >
               {isFaceTrackingEnabled ? <Eye size={14} className="mr-1"/> : <EyeOff size={14} className="mr-1"/>}
               {isFaceTrackingEnabled ? 'Focus Tracking ON' : 'Focus Tracking OFF'}
             </button>
+            <button 
+              className="text-xs flex items-center justify-center" 
+              style={{ background: 'transparent', color: isHostageMode ? '#ef4444' : '#a1a1aa' }}
+              onClick={() => setIsHostageMode(!isHostageMode)}
+              disabled={isRunning}
+            >
+              <Smartphone size={14} className="mr-1"/>
+              {isHostageMode ? 'Hostage Mode ON' : 'Hostage Mode OFF'}
+            </button>
           </div>
 
-          <div 
-            className={`timer-circle ${isRunning ? 'active' : ''}`}
-            style={{ '--current-color': isBreak ? '#10b981' : currentSubObj.color }}
-          >
-            {isBreak && <span className="absolute top-8 text-sm font-bold tracking-widest text-[#10b981]">BREAK</span>}
-            <span className="timer-time">{formatTime(time)}</span>
-          </div>
+          {isHostageMode && !isPhoneConnected && hostageSessionId ? (
+             <div className="flex flex-col items-center justify-center mb-8 bg-black/40 p-4 rounded-xl border border-red-500/30 h-[250px] w-[250px] mx-auto">
+               <p className="text-xs text-red-400 mb-3 text-center leading-tight">Scan to lock your phone<br/>and start timer.</p>
+               <div className="p-2 bg-white rounded-lg">
+                 <QRCodeSVG value={`${window.location.origin}/?hostage=${hostageSessionId}`} size={120} />
+               </div>
+             </div>
+          ) : (
+            <div 
+              className={`timer-circle ${isRunning ? 'active' : ''}`}
+              style={{ '--current-color': isBreak ? '#10b981' : currentSubObj.color }}
+            >
+              {isBreak && <span className="absolute top-8 text-sm font-bold tracking-widest text-[#10b981]">BREAK</span>}
+              <span className="timer-time">{formatTime(time)}</span>
+            </div>
+          )}
 
           <div className="flex gap-4">
             <button className={isRunning ? "" : "primary"} onClick={toggleTimer}>
