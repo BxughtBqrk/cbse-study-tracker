@@ -52,6 +52,7 @@ export default function App() {
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [phoneHiddenWarning, setPhoneHiddenWarning] = useState(false);
   const hostageChannelRef = useRef(null);
+  const lastHeartbeatRef = useRef(0);
 
   const timerRef = useRef(null);
   const webcamRef = useRef(null);
@@ -252,22 +253,46 @@ export default function App() {
       const channel = supabase.channel(`hostage_${hostageClientId}`, {
         config: { presence: { key: 'phone' } }
       });
+      
+      let heartbeatInterval;
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ online: true });
-          channel.send({ type: 'broadcast', event: 'status', payload: { connected: true, visible: true } });
+          // Heartbeat every 2 seconds
+          heartbeatInterval = setInterval(() => {
+            const isVisible = document.visibilityState === 'visible';
+            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { visible: isVisible } });
+          }, 2000);
         }
       });
       const handleVisibility = () => {
-        channel.send({ type: 'broadcast', event: 'status', payload: { connected: true, visible: document.visibilityState === 'visible' } });
+        channel.send({ type: 'broadcast', event: 'heartbeat', payload: { visible: document.visibilityState === 'visible' } });
       };
       document.addEventListener('visibilitychange', handleVisibility);
       return () => {
+        clearInterval(heartbeatInterval);
         document.removeEventListener('visibilitychange', handleVisibility);
         channel.untrack();
       }
     }
   }, [isHostageClient, hostageClientId]);
+
+  // Desktop Hostage Watchdog
+  useEffect(() => {
+    let watchdogInterval;
+    if (isRunning && isHostageMode && isPhoneConnected) {
+      watchdogInterval = setInterval(() => {
+        const timeSinceLastHeartbeat = Date.now() - lastHeartbeatRef.current;
+        if (timeSinceLastHeartbeat > 5000) { // 5 seconds without ping = dead
+          setPhoneHiddenWarning(true);
+          setIsRunning(false);
+          setIsPhoneConnected(false);
+          playAlertSound();
+        }
+      }, 1000);
+    }
+    return () => clearInterval(watchdogInterval);
+  }, [isRunning, isHostageMode, isPhoneConnected]);
 
   const toggleTimer = () => {
     if (!isRunning) { 
@@ -286,17 +311,20 @@ export default function App() {
             if (Object.keys(state).length === 0) {
               setPhoneHiddenWarning(true);
               setIsRunning(false);
+              setIsPhoneConnected(false);
               playAlertSound();
             }
           });
-          channel.on('broadcast', { event: 'status' }, (payload) => {
+          channel.on('broadcast', { event: 'heartbeat' }, (payload) => {
             if (payload.payload.visible) {
-              setIsPhoneConnected(true);
-              setPhoneHiddenWarning(false);
-              setIsRunning(true);
+              lastHeartbeatRef.current = Date.now();
+              setIsPhoneConnected(prev => prev ? prev : true);
+              setPhoneHiddenWarning(prev => prev ? false : prev);
+              setIsRunning(prev => prev ? prev : true);
             } else {
               setPhoneHiddenWarning(true);
               setIsRunning(false);
+              setIsPhoneConnected(false);
               playAlertSound();
             }
           }).subscribe();
