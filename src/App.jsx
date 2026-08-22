@@ -706,7 +706,8 @@ export default function App() {
       )}
 
       {activeTab === 'syllabus' && (
-        <motion.div className="glass-panel bento-chart-wide flex-col"
+        <motion.div className="glass-panel flex-col"
+           style={{ gridColumn: '2 / 4', gridRow: '2 / 4', justifyContent: 'flex-start' }}
            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         >
           <h2 className="mb-6 text-xl font-bold">Track Syllabus</h2>
