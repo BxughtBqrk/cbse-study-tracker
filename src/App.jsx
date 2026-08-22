@@ -515,7 +515,7 @@ export default function App() {
       )}
 
       {/* LEFT PANEL / TIMER TILE */}
-      <motion.div className={`glass-panel bento-timer flex flex-col items-center justify-start relative transition-all duration-500 ${isSlouching ? 'blur-md grayscale' : ''}`}
+      <motion.div className={`glass-panel bento-timer flex-col justify-center relative transition-all duration-500 ${isSlouching ? 'blur-md grayscale' : ''}`}
         whileHover={{ scale: 1.01 }}
         transition={{ type: 'spring', stiffness: 300 }}
       >
@@ -541,7 +541,7 @@ export default function App() {
         )}
 
         <div className="text-center mb-6">
-          <h1 className="mb-2 text-4xl font-extrabold tracking-tighter" style={{ textShadow: '0 0 20px rgba(255,255,255,0.2)' }}>Focus Tracker</h1>
+          <h1 className="mb-2 text-3xl font-extrabold tracking-tight">Focus Tracker</h1>
           <div className="flex justify-center gap-2 mt-4">
             <button className={`text-xs py-1 px-4 rounded-full ${!isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent border border-white/20'}`} onClick={() => setIsPomodoro(false)}>Stopwatch</button>
             <button className={`text-xs py-1 px-4 rounded-full ${isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent border border-white/20'}`} onClick={() => setIsPomodoro(true)}>Pomodoro</button>
@@ -550,10 +550,10 @@ export default function App() {
 
         <div className="flex-col items-center mb-8">
           <div className="w-full max-w-[280px] mb-6 flex flex-col gap-3">
-            <select value={activeSubject} onChange={(e) => setActiveSubject(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-xl p-3 bg-white/10 border border-white/10 text-white outline-none focus:border-white/30 transition-colors backdrop-blur-md shadow-inner">
+            <select value={activeSubject} onChange={(e) => setActiveSubject(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-lg p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
               {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <select value={activeChapter} onChange={(e) => setActiveChapter(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-xl p-3 bg-white/10 border border-white/10 text-white outline-none focus:border-white/30 transition-colors backdrop-blur-md shadow-inner">
+            <select value={activeChapter} onChange={(e) => setActiveChapter(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-lg p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
               {currentSubObj.books.map(book => (
                 <optgroup key={book.name} label={book.name}>
                   {book.chapters.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -565,7 +565,7 @@ export default function App() {
           <div className="text-center mb-6 flex justify-center gap-4">
             <button 
               className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10" 
-              style={{ color: isFaceTrackingEnabled ? '#10b981' : '#94a3b8', padding: '0.75rem 1.25rem' }}
+              style={{ color: isFaceTrackingEnabled ? '#10b981' : '#94a3b8', padding: '0.5rem 1rem' }}
               onClick={() => setIsFaceTrackingEnabled(!isFaceTrackingEnabled)}
             >
               {isFaceTrackingEnabled ? <Eye size={14} className="mr-2"/> : <EyeOff size={14} className="mr-2"/>}
@@ -573,7 +573,7 @@ export default function App() {
             </button>
             <button 
               className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10" 
-              style={{ color: isHostageMode ? '#ef4444' : '#94a3b8', padding: '0.75rem 1.25rem' }}
+              style={{ color: isHostageMode ? '#ef4444' : '#94a3b8', padding: '0.5rem 1rem' }}
               onClick={() => setIsHostageMode(!isHostageMode)}
               disabled={isRunning}
             >
@@ -636,23 +636,23 @@ export default function App() {
           <motion.div className="glass-panel bento-chart-1 flex flex-col justify-center items-center"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
           >
-             <p className="text-xs text-slate-400 mb-3 flex items-center font-bold uppercase tracking-widest"><Clock size={16} className="mr-2"/> Today's Focus</p>
-             <h3 className="text-5xl font-extrabold text-white tracking-tighter" style={{ textShadow: '0 0 20px rgba(255,255,255,0.3)' }}>{formatTime(todayStudyTime)}</h3>
+             <p className="text-sm text-slate-400 mb-1 flex items-center font-medium"><Clock size={16} className="mr-2"/> &nbsp; Today's Focus</p>
+             <h3 className="text-4xl font-extrabold text-blue-400 tracking-tight">{formatTime(todayStudyTime)}</h3>
           </motion.div>
           
           <motion.div className="glass-panel bento-chart-2 flex flex-col justify-center items-center"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
           >
-             <p className="text-xs text-slate-400 mb-3 flex items-center font-bold uppercase tracking-widest"><Target size={16} className="mr-2"/> Total Focus</p>
-             <h3 className="text-5xl font-extrabold text-white tracking-tighter" style={{ textShadow: '0 0 20px rgba(255,255,255,0.3)' }}>{formatTime(totalStudyTime)}</h3>
+             <p className="text-sm text-slate-400 mb-1 flex items-center font-medium"><Target size={16} className="mr-2"/> &nbsp; Total Focus</p>
+             <h3 className="text-4xl font-extrabold text-green-400 tracking-tight">{formatTime(totalStudyTime)}</h3>
           </motion.div>
 
           <motion.div className="glass-panel bento-chart-wide flex flex-col"
              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           >
-            <div className="flex justify-between items-end mb-6 border-b border-white/5 pb-4">
-               <h3 className="text-2xl font-extrabold text-white tracking-tight m-0">60-Day Heatmap</h3>
-               <span className="text-xs text-slate-400 uppercase tracking-widest font-bold">Study Consistency</span>
+            <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+               <h3 className="text-lg font-bold text-white">60-Day Heatmap</h3>
+               <span className="text-xs text-slate-400">Study Consistency</span>
             </div>
             <div className="heatmap-grid">
               {heatmapData.map((d, i) => (
@@ -662,8 +662,8 @@ export default function App() {
 
             {pieData.length > 0 && (
               <div className="mt-4 pt-4 border-t border-white/5">
-                <h3 className="text-xl font-bold text-white mb-2 self-start tracking-tight">Time Distribution</h3>
-                <div style={{ width: '100%', height: 180 }}>
+                <h3 className="text-lg font-bold text-white mb-4">Time Distribution</h3>
+                <div style={{ width: '100%', height: 220 }}>
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
@@ -679,7 +679,7 @@ export default function App() {
             <div className="mt-8 pt-6 border-t border-white/5">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-white flex items-center"><BrainCircuit size={18} className="mr-2 text-blue-400"/> Exam Prediction</h3>
-                <input type="date" value={examDate} onChange={e => {setExamDate(e.target.value); localStorage.setItem('cbse_exam_date', e.target.value);}} className="text-sm px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 outline-none focus:border-white/40 transition-colors backdrop-blur-md shadow-inner" />
+                <input type="date" value={examDate} onChange={e => {setExamDate(e.target.value); localStorage.setItem('cbse_exam_date', e.target.value);}} className="text-sm p-2 rounded-lg bg-slate-800 text-white border border-slate-700 outline-none" />
               </div>
               <p className={`text-sm flex items-center p-4 rounded-xl font-medium ${prediction.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' : prediction.status === 'danger' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-300'}`}>
                 {prediction.status === 'success' && <CheckCircle2 size={18} className="mr-2"/>}
@@ -711,7 +711,7 @@ export default function App() {
         >
           <h2 className="mb-6 text-xl font-bold">Track Syllabus</h2>
           
-          <div className="mb-8 p-6 rounded-3xl bg-white/5 border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md">
+          <div className="mb-8 p-6 rounded-2xl bg-slate-800/50">
             <div className="flex justify-between mb-3">
               <span className="font-bold text-lg">{currentSubObj.name} Overall</span>
               <span className="font-extrabold text-lg" style={{ color: currentSubObj.color }}>{currentSubjectOverallProgress}%</span>
@@ -744,7 +744,7 @@ export default function App() {
       )}
 
       {/* BOTTOM CONTROL BAR */}
-      <motion.div className="mt-6 flex justify-between items-center bg-white/5 backdrop-blur-2xl border border-white/10 p-5 rounded-3xl shadow-[0_8px_32px_rgb(0,0,0,0.3)]" style={{ gridColumn: '1 / -1' }}
+      <motion.div className="mt-4 flex justify-between items-center border-t border-white/5 pt-6" style={{ gridColumn: '1 / -1' }}
          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
       >
          <div className="flex gap-2">
