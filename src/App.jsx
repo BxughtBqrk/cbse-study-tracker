@@ -562,7 +562,7 @@ export default function App() {
             </select>
           </div>
 
-          <div className="text-center mb-12 flex justify-center gap-4">
+          <div className="text-center mb-8 flex justify-center gap-4">
             <button 
               className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10" 
               style={{ color: isFaceTrackingEnabled ? '#10b981' : '#94a3b8', padding: '0.5rem 1rem' }}
