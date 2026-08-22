@@ -734,7 +734,7 @@ export default function App() {
                         <span className="text-base font-medium">{chapter.title}</span>
                         <span className="text-sm px-3 py-1 rounded-full font-bold" style={{ backgroundColor: `${currentSubObj.color}20`, color: currentSubObj.color }}>{prog}%</span>
                       </div>
-                      <input type="range" className="custom-slider w-full" min="0" max="100" value={prog} onChange={(e) => handleProgressChange(chapter.id, e.target.value)} style={{ '--current-color': currentSubObj.color }} />
+                      <input type="range" className="custom-slider w-full" min="0" max="100" value={prog} onChange={(e) => handleProgressChange(chapter.id, e.target.value)} style={{ '--current-color': currentSubObj.color, '--slider-bg': `linear-gradient(to right, ${currentSubObj.color} ${prog}%, rgba(255,255,255,0.1) ${prog}%)` }} />
                     </div>
                   );
                 })}
