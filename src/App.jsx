@@ -314,6 +314,11 @@ export default function App() {
               setIsRunning(false);
               setIsPhoneConnected(false);
               playAlertSound();
+            } else {
+              lastHeartbeatRef.current = Date.now();
+              setIsPhoneConnected(true);
+              setPhoneHiddenWarning(false);
+              setIsRunning(true);
             }
           });
           channel.on('broadcast', { event: 'heartbeat' }, (payload) => {
