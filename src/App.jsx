@@ -251,6 +251,13 @@ export default function App() {
   
   useEffect(() => {
     if (isHostageClient && hostageClientId) {
+      let wakeLock = null;
+      const requestWakeLock = async () => {
+        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } 
+        catch (err) {}
+      };
+      requestWakeLock();
+
       const channel = supabase.channel(`hostage_${hostageClientId}`, {
         config: { presence: { key: 'phone' } }
       });
@@ -259,7 +266,6 @@ export default function App() {
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ online: true });
-          // Heartbeat every 2 seconds
           heartbeatInterval = setInterval(() => {
             const isVisible = document.visibilityState === 'visible';
             channel.send({ type: 'broadcast', event: 'heartbeat', payload: { visible: isVisible } });
@@ -267,10 +273,12 @@ export default function App() {
         }
       });
       const handleVisibility = () => {
+        if (document.visibilityState === 'visible') requestWakeLock();
         channel.send({ type: 'broadcast', event: 'heartbeat', payload: { visible: document.visibilityState === 'visible' } });
       };
       document.addEventListener('visibilitychange', handleVisibility);
       return () => {
+        if (wakeLock) wakeLock.release().catch(()=>{});
         clearInterval(heartbeatInterval);
         document.removeEventListener('visibilitychange', handleVisibility);
         channel.untrack();
@@ -494,11 +502,7 @@ export default function App() {
 
   if (isHostageClient) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-red-900 text-white text-center p-8">
-        <AlertTriangle size={64} className="mb-6 animate-pulse"/>
-        <h1 className="text-3xl font-bold mb-4">PHONE LOCKED</h1>
-        <p className="text-xl">Do not close this tab or turn off your screen.</p>
-        <p className="mt-8 opacity-70">If you leave this page, your desktop timer will pause and an alarm will sound.</p>
+      <div className="flex flex-col items-center justify-center h-screen w-screen bg-black select-none" style={{ backgroundColor: '#000000', margin: 0, padding: 0 }} onClick={(e) => e.preventDefault()}>
       </div>
     );
   }
