@@ -251,6 +251,7 @@ export default function App() {
   
   useEffect(() => {
     if (isHostageClient && hostageClientId) {
+      document.body.style.backgroundColor = '#000000';
       let wakeLock = null;
       const requestWakeLock = async () => {
         try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } 
@@ -502,7 +503,7 @@ export default function App() {
 
   if (isHostageClient) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen w-screen bg-black select-none" style={{ backgroundColor: '#000000', margin: 0, padding: 0 }} onClick={(e) => e.preventDefault()}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000', zIndex: 9999 }} onClick={(e) => e.preventDefault()}>
       </div>
     );
   }
