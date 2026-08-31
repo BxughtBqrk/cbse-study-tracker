@@ -502,8 +502,14 @@ export default function App() {
   }
 
   if (isHostageClient) {
+    const enterFullscreen = (e) => {
+      e.preventDefault();
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(()=>{});
+      }
+    };
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000', zIndex: 9999 }} onClick={(e) => e.preventDefault()}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000', zIndex: 9999 }} onClick={enterFullscreen}>
       </div>
     );
   }
