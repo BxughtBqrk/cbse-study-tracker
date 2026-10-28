@@ -1,32 +1,55 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, Upload, Download, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff, Cloud, CloudOff, Smartphone } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Play, Pause, Square, BarChart3, Clock, BookOpen, Trash2, List, BrainCircuit, Target, AlertTriangle, CheckCircle2, Eye, EyeOff, Cloud, CloudOff, Smartphone, GraduationCap, Briefcase, Edit2, Plus, Check, X, RotateCcw, FolderPlus, Sparkles } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
 import Webcam from "react-webcam";
 import * as tf from '@tensorflow/tfjs';
 import * as blazeface from '@tensorflow-models/blazeface';
-import { SYLLABUS } from './syllabusData';
+import { DEFAULT_COURSES, CBSE_SYLLABUS, CA_INTER_SYLLABUS } from './syllabusData';
 import { supabase } from './supabaseClient';
 import './index.css';
 
-const SUBJECTS = Object.keys(SYLLABUS).map(key => ({
-  id: key, 
-  name: SYLLABUS[key].name, 
-  color: SYLLABUS[key].color, 
-  books: SYLLABUS[key].books,
-  chapters: SYLLABUS[key].books.flatMap(b => b.chapters)
-}));
-
-const TOTAL_CHAPTERS = SUBJECTS.reduce((acc, sub) => acc + sub.chapters.length, 0);
+const PRESET_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'];
 
 export default function App() {
+  // --- MULTI-COURSE STATE ---
+  const [currentCourse, setCurrentCourse] = useState(() => {
+    return localStorage.getItem('study_active_course') || 'cbse';
+  });
+
+  const getInitialSyllabus = (courseId) => {
+    try {
+      const saved = localStorage.getItem('study_custom_syllabus_' + courseId);
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return DEFAULT_COURSES[courseId]?.defaultSyllabus || CBSE_SYLLABUS;
+  };
+
+  const [syllabus, setSyllabus] = useState(() => getInitialSyllabus(localStorage.getItem('study_active_course') || 'cbse'));
+
+  // Derived subjects and total chapters from active syllabus
+  const subjects = useMemo(() => {
+    if (!syllabus) return [];
+    return Object.keys(syllabus).map(key => ({
+      id: key,
+      name: syllabus[key].name || 'Subject',
+      color: syllabus[key].color || '#3b82f6',
+      books: syllabus[key].books || [],
+      chapters: (syllabus[key].books || []).flatMap(b => b.chapters || [])
+    }));
+  }, [syllabus]);
+
+  const totalChapters = useMemo(() => {
+    return subjects.reduce((acc, sub) => acc + sub.chapters.length, 0);
+  }, [subjects]);
+
   const [activeTab, setActiveTab] = useState('stats');
   
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [activeSubject, setActiveSubject] = useState(SUBJECTS[0].id);
-  const [activeChapter, setActiveChapter] = useState(SUBJECTS[0].chapters[0].id);
+  const [activeSubject, setActiveSubject] = useState(() => subjects[0]?.id || 'maths');
+  const [activeChapter, setActiveChapter] = useState(() => subjects[0]?.chapters[0]?.id || 'm1');
   
   const [isPomodoro, setIsPomodoro] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
@@ -39,6 +62,22 @@ export default function App() {
   const [sessions, setSessions] = useState([]);
   const [chapterProgress, setChapterProgress] = useState({});
   const [chapterCompletions, setChapterCompletions] = useState({}); 
+
+  // SYLLABUS EDITING STATE
+  const [isEditingSyllabus, setIsEditingSyllabus] = useState(false);
+  const [newChapterTitles, setNewChapterTitles] = useState({});
+  const [editingChapId, setEditingChapId] = useState(null);
+  const [editingChapTitle, setEditingChapTitle] = useState('');
+  
+  const [isAddingSubject, setIsAddingSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectColor, setNewSubjectColor] = useState('#3b82f6');
+  
+  const [addingBookSubId, setAddingBookSubId] = useState(null);
+  const [newBookName, setNewBookName] = useState('');
+  
+  const [editingBookKey, setEditingBookKey] = useState(null);
+  const [editingBookName, setEditingBookName] = useState('');
 
   // CLOUD SYNC STATE
   const [syncId, setSyncId] = useState('');
@@ -128,35 +167,242 @@ export default function App() {
     } catch(e) {}
   };
 
+  // --- PER-COURSE STORAGE & SWITCHING ---
+  const loadCourseData = useCallback((courseId) => {
+    let s = [], p = {}, c = {}, ed = DEFAULT_COURSES[courseId]?.defaultExamDate || '2027-02-15';
+    try {
+      const sRaw = localStorage.getItem('study_sessions_' + courseId) || (courseId === 'cbse' ? localStorage.getItem('cbse_study_sessions') : null);
+      if (sRaw) s = JSON.parse(sRaw);
+      
+      const pRaw = localStorage.getItem('study_progress_' + courseId) || (courseId === 'cbse' ? localStorage.getItem('cbse_chapter_progress') : null);
+      if (pRaw) p = JSON.parse(pRaw);
+      
+      const cRaw = localStorage.getItem('study_completions_' + courseId) || (courseId === 'cbse' ? localStorage.getItem('cbse_chapter_completions') : null);
+      if (cRaw) c = JSON.parse(cRaw);
+      
+      const edRaw = localStorage.getItem('study_exam_date_' + courseId) || (courseId === 'cbse' ? localStorage.getItem('cbse_exam_date') : null);
+      if (edRaw) ed = edRaw;
+    } catch(e) {}
+    return { sessions: s, progress: p, completions: c, examDate: ed };
+  }, []);
+
   // INITIAL LOAD
   useEffect(() => {
-    const s = localStorage.getItem('cbse_study_sessions');
-    if (s) try { setSessions(JSON.parse(s)); } catch(e){}
-    const p = localStorage.getItem('cbse_chapter_progress');
-    if (p) try { setChapterProgress(JSON.parse(p)); } catch(e){}
-    const c = localStorage.getItem('cbse_chapter_completions');
-    if (c) try { setChapterCompletions(JSON.parse(c)); } catch(e){}
-    const ed = localStorage.getItem('cbse_exam_date');
-    if (ed) setExamDate(ed);
+    const data = loadCourseData(currentCourse);
+    setSessions(data.sessions);
+    setChapterProgress(data.progress);
+    setChapterCompletions(data.completions);
+    setExamDate(data.examDate);
     
     const sid = localStorage.getItem('cbse_sync_id');
     if (sid) {
       setSyncId(sid);
-      fetchFromCloud(sid);
+      fetchFromCloud(sid, currentCourse);
     }
   }, []);
 
-  const fetchFromCloud = async (id) => {
+  const switchCourse = (newCourseId) => {
+    if (newCourseId === currentCourse) return;
+    if (isRunning) {
+      if (!confirm("A focus session is currently running. Switch course and stop timer?")) return;
+      setIsRunning(false);
+      setTime(0);
+    }
+    
+    // Save current course data
+    try {
+      localStorage.setItem('study_sessions_' + currentCourse, JSON.stringify(sessions));
+      localStorage.setItem('study_progress_' + currentCourse, JSON.stringify(chapterProgress));
+      localStorage.setItem('study_completions_' + currentCourse, JSON.stringify(chapterCompletions));
+      localStorage.setItem('study_exam_date_' + currentCourse, examDate);
+      if (currentCourse === 'cbse') {
+        localStorage.setItem('cbse_study_sessions', JSON.stringify(sessions));
+        localStorage.setItem('cbse_chapter_progress', JSON.stringify(chapterProgress));
+        localStorage.setItem('cbse_chapter_completions', JSON.stringify(chapterCompletions));
+        localStorage.setItem('cbse_exam_date', examDate);
+      }
+    } catch(e) {}
+
+    // Set new course
+    setCurrentCourse(newCourseId);
+    localStorage.setItem('study_active_course', newCourseId);
+    
+    // Load new course syllabus & data
+    const newSyl = getInitialSyllabus(newCourseId);
+    setSyllabus(newSyl);
+    
+    const data = loadCourseData(newCourseId);
+    setSessions(data.sessions);
+    setChapterProgress(data.progress);
+    setChapterCompletions(data.completions);
+    setExamDate(data.examDate);
+    
+    const newSubs = Object.keys(newSyl).map(key => ({
+      id: key,
+      chapters: (newSyl[key].books || []).flatMap(b => b.chapters || [])
+    }));
+    if (newSubs.length > 0) {
+      setActiveSubject(newSubs[0].id);
+      if (newSubs[0].chapters.length > 0) {
+        setActiveChapter(newSubs[0].chapters[0].id);
+      }
+    }
+
+    if (syncId) {
+      fetchFromCloud(syncId, newCourseId);
+    }
+  };
+
+  // --- SYLLABUS EDITING LOGIC ---
+  const saveSyllabus = (updatedSyllabus) => {
+    setSyllabus(updatedSyllabus);
+    try {
+      localStorage.setItem('study_custom_syllabus_' + currentCourse, JSON.stringify(updatedSyllabus));
+    } catch(e) {}
+  };
+
+  const handleAddChapter = (subId, bookIdx) => {
+    const titleKey = subId + '_' + bookIdx;
+    const title = (newChapterTitles[titleKey] || '').trim();
+    if (!title) return;
+    
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    if (!clone[subId] || !clone[subId].books[bookIdx]) return;
+    
+    const newId = 'chap_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    if (!clone[subId].books[bookIdx].chapters) clone[subId].books[bookIdx].chapters = [];
+    clone[subId].books[bookIdx].chapters.push({
+      id: newId,
+      title: title
+    });
+    
+    saveSyllabus(clone);
+    setNewChapterTitles(prev => ({ ...prev, [titleKey]: '' }));
+  };
+
+  const handleStartEditChapter = (chap) => {
+    setEditingChapId(chap.id);
+    setEditingChapTitle(chap.title);
+  };
+
+  const handleSaveEditChapter = (subId, bookIdx, chapId) => {
+    if (!editingChapTitle.trim()) return;
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    const book = clone[subId]?.books[bookIdx];
+    if (!book) return;
+    const chap = book.chapters.find(c => c.id === chapId);
+    if (chap) {
+      chap.title = editingChapTitle.trim();
+      saveSyllabus(clone);
+    }
+    setEditingChapId(null);
+    setEditingChapTitle('');
+  };
+
+  const handleDeleteChapter = (subId, bookIdx, chapId) => {
+    if (!confirm("Are you sure you want to delete this chapter/topic?")) return;
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    const book = clone[subId]?.books[bookIdx];
+    if (!book) return;
+    book.chapters = book.chapters.filter(c => c.id !== chapId);
+    saveSyllabus(clone);
+    
+    const newProg = { ...chapterProgress };
+    delete newProg[chapId];
+    setChapterProgress(newProg);
+    localStorage.setItem('study_progress_' + currentCourse, JSON.stringify(newProg));
+  };
+
+  const handleAddBook = (subId) => {
+    if (!newBookName.trim()) return;
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    if (!clone[subId]) return;
+    if (!clone[subId].books) clone[subId].books = [];
+    clone[subId].books.push({
+      name: newBookName.trim(),
+      chapters: []
+    });
+    saveSyllabus(clone);
+    setAddingBookSubId(null);
+    setNewBookName('');
+  };
+
+  const handleSaveEditBook = (subId, bookIdx) => {
+    if (!editingBookName.trim()) return;
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    if (clone[subId]?.books[bookIdx]) {
+      clone[subId].books[bookIdx].name = editingBookName.trim();
+      saveSyllabus(clone);
+    }
+    setEditingBookKey(null);
+    setEditingBookName('');
+  };
+
+  const handleDeleteBook = (subId, bookIdx) => {
+    if (!confirm("Delete this module and all its chapters?")) return;
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    if (clone[subId]?.books) {
+      clone[subId].books.splice(bookIdx, 1);
+      saveSyllabus(clone);
+    }
+  };
+
+  const handleAddSubject = () => {
+    if (!newSubjectName.trim()) return;
+    const key = 'sub_' + Date.now();
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    clone[key] = {
+      name: newSubjectName.trim(),
+      color: newSubjectColor || '#3b82f6',
+      books: [
+        { name: 'Module 1', chapters: [] }
+      ]
+    };
+    saveSyllabus(clone);
+    setActiveSubject(key);
+    setIsAddingSubject(false);
+    setNewSubjectName('');
+  };
+
+  const handleDeleteSubject = (subId) => {
+    if (Object.keys(syllabus).length <= 1) {
+      alert("You cannot delete the only remaining subject!");
+      return;
+    }
+    if (!confirm(`Delete subject "${syllabus[subId]?.name}" and all its chapters?`)) return;
+    const clone = JSON.parse(JSON.stringify(syllabus));
+    delete clone[subId];
+    saveSyllabus(clone);
+    const remaining = Object.keys(clone);
+    setActiveSubject(remaining[0]);
+  };
+
+  const handleResetSyllabus = () => {
+    const courseObj = DEFAULT_COURSES[currentCourse];
+    if (!confirm(`Reset ${courseObj?.name} syllabus to official default? Any custom chapters added will be replaced.`)) return;
+    const def = courseObj?.defaultSyllabus || CBSE_SYLLABUS;
+    localStorage.removeItem('study_custom_syllabus_' + currentCourse);
+    setSyllabus(def);
+    setIsEditingSyllabus(false);
+  };
+
+  // --- CLOUD SYNC ---
+  const fetchFromCloud = async (id, courseToUse = currentCourse) => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.from('user_stats').select('*').eq('sync_id', id).single();
+      const syncKey = id + '_' + courseToUse;
+      let { data } = await supabase.from('user_stats').select('*').eq('sync_id', syncKey).single();
+      if (!data && courseToUse === 'cbse') {
+        const res = await supabase.from('user_stats').select('*').eq('sync_id', id).single();
+        data = res.data;
+      }
       if (data) {
         setSessions(data.sessions || []);
         setChapterProgress(data.progress || {});
         setChapterCompletions(data.completions || {});
-        localStorage.setItem('cbse_study_sessions', JSON.stringify(data.sessions || []));
-        localStorage.setItem('cbse_chapter_progress', JSON.stringify(data.progress || {}));
-        localStorage.setItem('cbse_chapter_completions', JSON.stringify(data.completions || {}));
+        localStorage.setItem('study_sessions_' + courseToUse, JSON.stringify(data.sessions || []));
+        localStorage.setItem('study_progress_' + courseToUse, JSON.stringify(data.progress || {}));
+        localStorage.setItem('study_completions_' + courseToUse, JSON.stringify(data.completions || {}));
       }
     } catch(e) {
       console.error("Fetch error", e);
@@ -168,26 +414,36 @@ export default function App() {
     if (!idToUse) return;
     setIsSyncing(true);
     try {
+      const syncKey = idToUse + '_' + currentCourse;
       await supabase.from('user_stats').upsert({
-        sync_id: idToUse,
+        sync_id: syncKey,
         sessions: s,
         progress: p,
         completions: c,
         updated_at: new Date().toISOString()
       }, { onConflict: 'sync_id' });
+
+      if (currentCourse === 'cbse') {
+        await supabase.from('user_stats').upsert({
+          sync_id: idToUse,
+          sessions: s,
+          progress: p,
+          completions: c,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'sync_id' });
+      }
     } catch(e) { console.error("Save error", e); }
     setIsSyncing(false);
   };
 
   const linkDevice = async () => {
-    let newId = prompt("Enter a unique Sync ID (e.g. aryan2027). Use the same ID on all devices to sync automatically:");
+    let newId = prompt("Enter a unique Sync ID (e.g. aryan2027 or sister_ca). Use the same ID on devices to sync:");
     if (!newId) return;
-    newId = newId.trim().toLowerCase(); // FIX: Prevent mobile auto-capitalization from breaking sync
+    newId = newId.trim().toLowerCase();
     
     setSyncId(newId);
     localStorage.setItem('cbse_sync_id', newId);
-    await fetchFromCloud(newId);
-    // If empty in cloud but we have local, push it immediately
+    await fetchFromCloud(newId, currentCourse);
     if (sessions.length > 0 || Object.keys(chapterProgress).length > 0) {
       saveToCloud(newId, sessions, chapterProgress, chapterCompletions);
     }
@@ -238,12 +494,12 @@ export default function App() {
   }, [time, isRunning, isBreak]);
 
   useEffect(() => {
-    const sub = SUBJECTS.find(s => s.id === activeSubject);
+    const sub = subjects.find(s => s.id === activeSubject);
     if (sub && sub.chapters.length > 0) {
       const exists = sub.chapters.some(c => c.id === activeChapter);
       if (!exists) setActiveChapter(sub.chapters[0].id);
     }
-  }, [activeSubject]);
+  }, [activeSubject, subjects]);
 
   // Mobile Client Hostage Logic
   const isHostageClient = window.location.search.includes('hostage=');
@@ -359,7 +615,11 @@ export default function App() {
     const newSession = { id: Date.now().toString(), subjectId: activeSubject, chapterId: activeChapter, durationSeconds: duration, date: new Date().toISOString() };
     const updated = [...sessions, newSession];
     setSessions(updated);
-    localStorage.setItem('cbse_study_sessions', JSON.stringify(updated));
+    
+    localStorage.setItem('study_sessions_' + currentCourse, JSON.stringify(updated));
+    if (currentCourse === 'cbse') {
+      localStorage.setItem('cbse_study_sessions', JSON.stringify(updated));
+    }
     saveToCloud(syncId, updated, chapterProgress, chapterCompletions);
     
     setIsRunning(false); setIsBreak(false);
@@ -370,24 +630,43 @@ export default function App() {
     const p = parseInt(val);
     const updatedProg = { ...chapterProgress, [chapId]: p };
     setChapterProgress(updatedProg);
-    localStorage.setItem('cbse_chapter_progress', JSON.stringify(updatedProg));
+    
+    localStorage.setItem('study_progress_' + currentCourse, JSON.stringify(updatedProg));
+    if (currentCourse === 'cbse') {
+      localStorage.setItem('cbse_chapter_progress', JSON.stringify(updatedProg));
+    }
 
     let updatedComp = chapterCompletions;
     if (p === 100 && !chapterCompletions[chapId]) {
       updatedComp = { ...chapterCompletions, [chapId]: new Date().toISOString() };
       setChapterCompletions(updatedComp);
-      localStorage.setItem('cbse_chapter_completions', JSON.stringify(updatedComp));
+      localStorage.setItem('study_completions_' + currentCourse, JSON.stringify(updatedComp));
+      if (currentCourse === 'cbse') {
+        localStorage.setItem('cbse_chapter_completions', JSON.stringify(updatedComp));
+      }
     }
     
     saveToCloud(syncId, sessions, updatedProg, updatedComp);
   };
 
+  const toggleChapterComplete = (chapId) => {
+    const cur = chapterProgress[chapId] || 0;
+    handleProgressChange(chapId, cur === 100 ? 0 : 100);
+  };
+
   const clearData = () => {
-    if (confirm('Delete all data?')) {
+    const courseName = DEFAULT_COURSES[currentCourse]?.name || currentCourse;
+    if (confirm(`Delete all tracking data for ${courseName}?`)) {
       setSessions([]); setChapterProgress({}); setChapterCompletions({});
-      setSyncId('');
-      localStorage.clear();
-      if(syncId) {
+      localStorage.removeItem('study_sessions_' + currentCourse);
+      localStorage.removeItem('study_progress_' + currentCourse);
+      localStorage.removeItem('study_completions_' + currentCourse);
+      if (currentCourse === 'cbse') {
+        localStorage.removeItem('cbse_study_sessions');
+        localStorage.removeItem('cbse_chapter_progress');
+        localStorage.removeItem('cbse_chapter_completions');
+      }
+      if (syncId) {
         saveToCloud(syncId, [], {}, {});
       }
     }
@@ -412,7 +691,7 @@ export default function App() {
       const compDate = new Date(chapterCompletions[chapId]);
       const diffDays = Math.floor((now - compDate) / (1000 * 60 * 60 * 24));
       let title = "Unknown";
-      SUBJECTS.forEach(s => s.chapters.forEach(c => { if (c.id === chapId) title = c.title; }));
+      subjects.forEach(s => s.chapters.forEach(c => { if (c.id === chapId) title = c.title; }));
       if (diffDays === 1 || diffDays === 3 || diffDays === 7) due.push({ id: chapId, title, days: diffDays });
     });
     return due;
@@ -431,9 +710,9 @@ export default function App() {
     
     const targetDate = new Date(examDate);
     const daysRemaining = Math.max(0, Math.floor((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
-    const remainingChapters = TOTAL_CHAPTERS - completedChaptersCount;
+    const remainingChapters = totalChapters - completedChaptersCount;
     
-    if (remainingChapters === 0) return { status: 'success', msg: "Syllabus Completed! Revise now." };
+    if (remainingChapters <= 0) return { status: 'success', msg: "Syllabus Completed! Revise now." };
     if (daysRemaining === 0) return { status: 'danger', msg: "Exam date has passed or is today!" };
 
     const requiredBurnRate = remainingChapters / daysRemaining;
@@ -442,7 +721,7 @@ export default function App() {
   };
   const prediction = getPrediction();
 
-  const currentSubObj = SUBJECTS.find(s => s.id === activeSubject);
+  const currentSubObj = subjects.find(s => s.id === activeSubject) || subjects[0] || { id: '', name: 'Subject', color: '#3b82f6', books: [], chapters: [] };
   const totalStudyTime = sessions.reduce((acc, curr) => acc + curr.durationSeconds, 0);
   const todayStr = new Date().toLocaleDateString();
   const todayStudyTime = sessions.reduce((acc, curr) => {
@@ -466,12 +745,12 @@ export default function App() {
     pieDataMap[s.subjectId] += s.durationSeconds;
   });
   const pieData = Object.keys(pieDataMap).map(subId => {
-    const sub = SUBJECTS.find(s => s.id === subId);
+    const sub = subjects.find(s => s.id === subId);
     return { name: sub?.name || 'Unknown', value: pieDataMap[subId], color: sub?.color || '#fff' };
   }).filter(d => d.value > 0);
 
   // 2. Bar Chart: Chapters per Subject
-  const barData = SUBJECTS.map(sub => {
+  const barData = subjects.map(sub => {
     let completed = 0;
     sub.chapters.forEach(c => { if (chapterProgress[c.id] === 100) completed++; });
     return { name: sub.name, completed, total: sub.chapters.length, color: sub.color };
@@ -530,6 +809,54 @@ export default function App() {
         </div>
       )}
 
+      {/* TOP COURSE SWITCHER & HEADER BAR */}
+      <motion.div 
+        className="glass-panel flex flex-wrap justify-between items-center gap-4 py-4 px-6"
+        style={{ gridColumn: '1 / -1' }}
+        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
+               style={{ background: currentCourse === 'cainter' ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'linear-gradient(135deg, #2563eb, #06b6d4)' }}>
+            {currentCourse === 'cainter' ? <Briefcase size={22} className="text-white"/> : <GraduationCap size={22} className="text-white"/>}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black tracking-tight mb-0">Focus Tracker</h1>
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                    style={{ 
+                      background: currentCourse === 'cainter' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                      color: currentCourse === 'cainter' ? '#c4b5fd' : '#93c5fd',
+                      border: `1px solid ${currentCourse === 'cainter' ? 'rgba(139, 92, 246, 0.4)' : 'rgba(59, 130, 246, 0.4)'}`
+                    }}>
+                {DEFAULT_COURSES[currentCourse]?.shortName || currentCourse}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              {currentCourse === 'cainter' ? 'Chartered Accountancy Intermediate Suite' : 'CBSE Board Prep Suite'} • {subjects.length} Subjects • {totalChapters} Chapters
+            </p>
+          </div>
+        </div>
+
+        {/* COURSE SWITCHER BUTTONS */}
+        <div className="course-switcher-pill flex items-center p-1 rounded-2xl">
+          <button
+            onClick={() => switchCourse('cbse')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-300 ${currentCourse === 'cbse' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
+          >
+            <GraduationCap size={15} />
+            CBSE Class 10
+          </button>
+          <button
+            onClick={() => switchCourse('cainter')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-300 ${currentCourse === 'cainter' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
+          >
+            <Briefcase size={15} />
+            CA Intermediate
+          </button>
+        </div>
+      </motion.div>
+
       {/* LEFT PANEL / TIMER TILE */}
       <motion.div className={`glass-panel bento-timer flex-col justify-center relative transition-all duration-500 ${isSlouching ? 'blur-md grayscale' : ''}`}
         whileHover={{ scale: 1.01 }}
@@ -557,7 +884,7 @@ export default function App() {
         )}
 
         <div className="text-center mb-6">
-          <h1 className="mb-2 text-3xl font-extrabold tracking-tight">Focus Tracker</h1>
+          <h2 className="mb-2 text-2xl font-extrabold tracking-tight">Focus Timer</h2>
           <div className="flex justify-center gap-2 mt-4">
             <button className={`text-xs py-1 px-4 rounded-full ${!isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent border border-white/20'}`} onClick={() => setIsPomodoro(false)}>Stopwatch</button>
             <button className={`text-xs py-1 px-4 rounded-full ${isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent border border-white/20'}`} onClick={() => setIsPomodoro(true)}>Pomodoro</button>
@@ -567,7 +894,7 @@ export default function App() {
         <div className="flex-col items-center mb-8">
           <div className="w-full max-w-[280px] mb-6 flex flex-col gap-3">
             <select value={activeSubject} onChange={(e) => setActiveSubject(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-lg p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
-              {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             <select value={activeChapter} onChange={(e) => setActiveChapter(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-lg p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
               {currentSubObj.books.map(book => (
@@ -643,7 +970,7 @@ export default function App() {
         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
       >
         <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}><BarChart3 size={18} className="inline mr-2" /> Analytics</button>
-        <button className={`tab ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}><List size={18} className="inline mr-2" /> Syllabus</button>
+        <button className={`tab ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}><List size={18} className="inline mr-2" /> Syllabus & Chapters</button>
       </motion.div>
 
       {/* RIGHT PANEL CONTENT */}
@@ -695,7 +1022,16 @@ export default function App() {
             <div className="mt-8 pt-6 border-t border-white/5">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-white flex items-center"><BrainCircuit size={18} className="mr-2 text-blue-400"/> Exam Prediction</h3>
-                <input type="date" value={examDate} onChange={e => {setExamDate(e.target.value); localStorage.setItem('cbse_exam_date', e.target.value);}} className="text-sm p-2 rounded-lg bg-slate-800 text-white border border-slate-700 outline-none" />
+                <input 
+                  type="date" 
+                  value={examDate} 
+                  onChange={e => {
+                    setExamDate(e.target.value); 
+                    localStorage.setItem('study_exam_date_' + currentCourse, e.target.value);
+                    if (currentCourse === 'cbse') localStorage.setItem('cbse_exam_date', e.target.value);
+                  }} 
+                  className="text-sm p-2 rounded-lg bg-slate-800 text-white border border-slate-700 outline-none" 
+                />
               </div>
               <p className={`text-sm flex items-center p-4 rounded-xl font-medium ${prediction.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' : prediction.status === 'danger' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-300'}`}>
                 {prediction.status === 'success' && <CheckCircle2 size={18} className="mr-2"/>}
@@ -726,34 +1062,345 @@ export default function App() {
            style={{ gridColumn: '2 / 4', gridRow: '2 / 4', justifyContent: 'flex-start', alignSelf: 'start' }}
            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         >
-          <h2 className="mb-6 text-xl font-bold">Track Syllabus</h2>
-          
-          <div className="mb-8 p-6 rounded-2xl bg-slate-800/50">
-            <div className="flex justify-between mb-3">
-              <span className="font-bold text-lg">{currentSubObj.name} Overall</span>
-              <span className="font-extrabold text-lg" style={{ color: currentSubObj.color }}>{currentSubjectOverallProgress}%</span>
+          {/* HEADER WITH EDIT TOGGLE */}
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-6 pb-4 border-b border-white/5">
+            <div>
+              <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+                {DEFAULT_COURSES[currentCourse]?.name || currentCourse} Syllabus
+                {isEditingSyllabus && <span className="edit-mode-badge"><Edit2 size={12}/> Editing Mode</span>}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {isEditingSyllabus ? 'Add your own custom topics, rename chapters, or add modules below.' : 'Track completion or customize chapters for your syllabus.'}
+              </p>
             </div>
-            <div className="progress-bg h-4 rounded-full">
-              <div className="progress-fill h-full rounded-full" style={{ width: `${currentSubjectOverallProgress}%`, backgroundColor: currentSubObj.color }}></div>
+
+            <div className="flex items-center gap-2">
+              {isEditingSyllabus ? (
+                <>
+                  <button 
+                    onClick={handleResetSyllabus} 
+                    className="text-xs py-1.5 px-3 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 flex items-center gap-1.5"
+                    title="Restore standard official syllabus"
+                  >
+                    <RotateCcw size={14} /> Reset
+                  </button>
+                  <button 
+                    onClick={() => setIsAddingSubject(true)} 
+                    className="text-xs py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center gap-1.5"
+                  >
+                    <Plus size={14} /> Subject
+                  </button>
+                  <button 
+                    onClick={() => setIsEditingSyllabus(false)} 
+                    className="text-xs py-1.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                  >
+                    <Check size={14} /> Done
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setIsEditingSyllabus(true)} 
+                  className="text-xs py-2 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/10 shadow-sm"
+                >
+                  <Edit2 size={14} className="text-amber-400" />
+                  Customize Syllabus
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex-col gap-6">
-            {currentSubObj.books.map(book => (
-              <div key={book.name} className="flex-col mb-6">
-                <h3 className="text-sm font-bold tracking-wider uppercase mb-4 text-slate-400 border-b border-slate-700/50 pb-2">{book.name}</h3>
-                {book.chapters.map(chapter => {
-                  const prog = chapterProgress[chapter.id] || 0;
-                  return (
-                    <div key={chapter.id} className="p-4 mb-3 rounded-xl border border-white/5 bg-slate-800/50 hover:bg-slate-800 transition-colors">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-base font-medium">{chapter.title}</span>
-                        <span className="text-sm px-3 py-1 rounded-full font-bold" style={{ backgroundColor: `${currentSubObj.color}20`, color: currentSubObj.color }}>{prog}%</span>
-                      </div>
-                      <input type="range" className="custom-slider w-full" min="0" max="100" value={prog} onChange={(e) => handleProgressChange(chapter.id, e.target.value)} style={{ '--current-color': currentSubObj.color, '--slider-bg': `linear-gradient(to right, ${currentSubObj.color} ${prog}%, rgba(255,255,255,0.1) ${prog}%)` }} />
+          {/* EDIT MODE ACTIVE BANNER */}
+          {isEditingSyllabus && (
+            <div className="p-4 mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-300">Customizer Active</h4>
+                  <p className="text-xs text-amber-300/80">Add custom topics to any module or delete chapters. All changes are saved instantly!</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADD SUBJECT FORM DRAWER */}
+          {isAddingSubject && (
+            <div className="p-5 mb-6 rounded-2xl bg-slate-800/90 border border-blue-500/40 shadow-xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Plus size={16} className="text-blue-400" /> Add New Subject to {DEFAULT_COURSES[currentCourse]?.shortName}
+                </h3>
+                <button onClick={() => setIsAddingSubject(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  placeholder="Subject Name (e.g., Information Technology, Economics...)"
+                  value={newSubjectName}
+                  onChange={(e) => setNewSubjectName(e.target.value)}
+                  className="text-sm p-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none focus:border-blue-500"
+                  autoFocus
+                />
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-slate-400">Theme Color:</span>
+                  {PRESET_COLORS.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNewSubjectColor(c)}
+                      className="w-6 h-6 rounded-full border-2 transition-transform"
+                      style={{ backgroundColor: c, borderColor: newSubjectColor === c ? '#fff' : 'transparent', transform: newSubjectColor === c ? 'scale(1.2)' : 'scale(1)' }}
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 mt-2">
+                  <button onClick={() => setIsAddingSubject(false)} className="text-xs px-3 py-2 rounded-lg text-slate-400 hover:text-white">Cancel</button>
+                  <button onClick={handleAddSubject} className="text-xs px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md">Create Subject</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SUBJECTS HORIZONTAL NAV PILLS */}
+          <div className="subject-nav-scroll mb-6">
+            {subjects.map(s => {
+              const prog = calculateSubjectProgress(s);
+              const isActive = s.id === activeSubject;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveSubject(s.id)}
+                  className={`subject-chip ${isActive ? 'active' : ''}`}
+                  style={{ borderColor: isActive ? s.color : 'rgba(255,255,255,0.08)' }}
+                >
+                  <span className="color-dot" style={{ backgroundColor: s.color }} />
+                  <span>{s.name}</span>
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${s.color}25`, color: s.color }}>
+                    {prog}%
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* ACTIVE SUBJECT OVERVIEW CARD */}
+          <div className="mb-6 p-6 rounded-2xl bg-slate-800/50 border border-white/5">
+            <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
+              <div className="flex items-center gap-3">
+                <span className="w-4 h-4 rounded-full" style={{ backgroundColor: currentSubObj.color }} />
+                <span className="font-bold text-lg text-white">{currentSubObj.name} Overall</span>
+                {isEditingSyllabus && subjects.length > 1 && (
+                  <button
+                    onClick={() => handleDeleteSubject(currentSubObj.id)}
+                    className="text-xs text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-rose-500/10"
+                    title="Delete this entire subject"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-extrabold text-lg" style={{ color: currentSubObj.color }}>{currentSubjectOverallProgress}%</span>
+                {isEditingSyllabus && (
+                  <button
+                    onClick={() => setAddingBookSubId(currentSubObj.id)}
+                    className="text-xs py-1.5 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-1 border border-white/10"
+                  >
+                    <FolderPlus size={14} /> Add Module
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="progress-bg h-3.5 rounded-full bg-slate-900/60 overflow-hidden">
+              <div className="progress-fill h-full rounded-full transition-all duration-500" style={{ width: `${currentSubjectOverallProgress}%`, backgroundColor: currentSubObj.color }}></div>
+            </div>
+          </div>
+
+          {/* ADD MODULE INLINE FORM */}
+          {addingBookSubId === currentSubObj.id && (
+            <div className="p-4 mb-6 rounded-2xl bg-slate-800/80 border border-white/10">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">New Module / Section Name</h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Module 2: Corporate Accounts"
+                  value={newBookName}
+                  onChange={(e) => setNewBookName(e.target.value)}
+                  className="flex-1 text-sm bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none"
+                  autoFocus
+                />
+                <button onClick={() => setAddingBookSubId(null)} className="text-xs px-3 py-2 text-slate-400 hover:text-white">Cancel</button>
+                <button onClick={() => handleAddBook(currentSubObj.id)} className="text-xs px-4 py-2 rounded-xl bg-blue-600 text-white font-bold">Add</button>
+              </div>
+            </div>
+          )}
+
+          {/* BOOKS / MODULES & CHAPTERS LIST */}
+          <div className="flex flex-col gap-6">
+            {currentSubObj.books.length === 0 && (
+              <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl text-slate-400">
+                <BookOpen size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">No modules in this subject yet.</p>
+                {isEditingSyllabus && (
+                  <button onClick={() => setAddingBookSubId(currentSubObj.id)} className="mt-3 text-xs py-1.5 px-3 bg-blue-600 text-white font-bold rounded-lg inline-flex items-center gap-1">
+                    <Plus size={14} /> Add First Module
+                  </button>
+                )}
+              </div>
+            )}
+
+            {currentSubObj.books.map((book, bookIdx) => (
+              <div key={bookIdx} className="module-card">
+                {/* MODULE HEADER */}
+                <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5">
+                  {editingBookKey === `${currentSubObj.id}_${bookIdx}` ? (
+                    <div className="flex items-center gap-2 flex-1 mr-4">
+                      <input
+                        type="text"
+                        value={editingBookName}
+                        onChange={(e) => setEditingBookName(e.target.value)}
+                        className="text-xs font-bold bg-slate-900 border border-blue-500 rounded px-2 py-1 text-white flex-1 outline-none"
+                        autoFocus
+                      />
+                      <button onClick={() => handleSaveEditBook(currentSubObj.id, bookIdx)} className="p-1 text-emerald-400 hover:bg-emerald-500/20 rounded"><Check size={14}/></button>
+                      <button onClick={() => setEditingBookKey(null)} className="p-1 text-slate-400 hover:bg-white/10 rounded"><X size={14}/></button>
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold tracking-wider uppercase text-slate-400">{book.name}</h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">{book.chapters.length} topics</span>
+                      {isEditingSyllabus && (
+                        <button onClick={() => { setEditingBookKey(`${currentSubObj.id}_${bookIdx}`); setEditingBookName(book.name); }} className="text-slate-500 hover:text-white p-1">
+                          <Edit2 size={12}/>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {isEditingSyllabus && currentSubObj.books.length > 1 && (
+                    <button onClick={() => handleDeleteBook(currentSubObj.id, bookIdx)} className="text-slate-500 hover:text-rose-400 p-1" title="Delete module">
+                      <Trash2 size={14}/>
+                    </button>
+                  )}
+                </div>
+
+                {/* INLINE ADD CHAPTER FORM (WHEN EDIT MODE ACTIVE) */}
+                {isEditingSyllabus && (
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); handleAddChapter(currentSubObj.id, bookIdx); }}
+                    className="flex gap-2 mb-4"
+                  >
+                    <input
+                      type="text"
+                      placeholder={`+ Add new chapter/topic to ${book.name}...`}
+                      value={newChapterTitles[`${currentSubObj.id}_${bookIdx}`] || ''}
+                      onChange={(e) => setNewChapterTitles(prev => ({ ...prev, [`${currentSubObj.id}_${bookIdx}`]: e.target.value }))}
+                      className="flex-1 text-xs bg-slate-900/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 outline-none focus:border-blue-500"
+                    />
+                    <button type="submit" className="text-xs font-bold px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 shadow">
+                      <Plus size={14}/> Add
+                    </button>
+                  </form>
+                )}
+
+                {/* CHAPTERS LIST */}
+                {book.chapters.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">No chapters in this module yet. Use the "+ Add" input above.</p>
+                ) : (
+                  book.chapters.map(chapter => {
+                    const prog = chapterProgress[chapter.id] || 0;
+                    const isDone = prog === 100;
+                    const isEditingThis = editingChapId === chapter.id;
+
+                    return (
+                      <div key={chapter.id} className="chapter-row">
+                        {isEditingThis ? (
+                          <div className="flex items-center gap-2 py-1">
+                            <input
+                              type="text"
+                              value={editingChapTitle}
+                              onChange={(e) => setEditingChapTitle(e.target.value)}
+                              className="flex-1 text-sm bg-slate-900 border border-blue-500 rounded-lg px-3 py-1.5 text-white outline-none"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEditChapter(currentSubObj.id, bookIdx, chapter.id);
+                                if (e.key === 'Escape') setEditingChapId(null);
+                              }}
+                            />
+                            <button onClick={() => handleSaveEditChapter(currentSubObj.id, bookIdx, chapter.id)} className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500">
+                              <Check size={14}/>
+                            </button>
+                            <button onClick={() => setEditingChapId(null)} className="p-1.5 bg-slate-800 text-slate-400 rounded-lg hover:text-white">
+                              <X size={14}/>
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                                {isDone && <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />}
+                                {chapter.title}
+                              </span>
+                              
+                              <div className="flex items-center gap-2">
+                                {isEditingSyllabus ? (
+                                  <>
+                                    <button 
+                                      onClick={() => handleStartEditChapter(chapter)} 
+                                      className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                      title="Rename topic"
+                                    >
+                                      <Edit2 size={14} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteChapter(currentSubObj.id, bookIdx, chapter.id)} 
+                                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                      title="Delete topic"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => toggleChapterComplete(chapter.id)}
+                                      className={`text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${isDone ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
+                                      title={isDone ? 'Click to unmark complete' : 'One-click mark 100% complete'}
+                                    >
+                                      {isDone ? '100% Done' : 'Mark Done'}
+                                    </button>
+                                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold" style={{ backgroundColor: `${currentSubObj.color}20`, color: currentSubObj.color }}>
+                                      {prog}%
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* PROGRESS SLIDER (ONLY IN STUDY MODE) */}
+                            {!isEditingSyllabus && (
+                              <input 
+                                type="range" 
+                                className="custom-slider w-full mt-1" 
+                                min="0" 
+                                max="100" 
+                                value={prog} 
+                                onChange={(e) => handleProgressChange(chapter.id, e.target.value)} 
+                                style={{ 
+                                  '--current-color': currentSubObj.color, 
+                                  '--slider-bg': `linear-gradient(to right, ${currentSubObj.color} ${prog}%, rgba(255,255,255,0.08) ${prog}%)` 
+                                }} 
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             ))}
           </div>
@@ -761,7 +1408,7 @@ export default function App() {
       )}
 
       {/* BOTTOM CONTROL BAR */}
-      <motion.div className="mt-4 flex justify-between items-center border-t border-white/5 pt-6" style={{ gridColumn: '1 / -1' }}
+      <motion.div className="mt-4 flex flex-wrap justify-between items-center border-t border-white/5 pt-6 gap-4" style={{ gridColumn: '1 / -1' }}
          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
       >
          <div className="flex gap-2">
@@ -771,7 +1418,9 @@ export default function App() {
              {isSyncing && <span className="ml-2 text-xs opacity-50">(syncing)</span>}
            </button>
          </div>
-         <button onClick={clearData} className="danger rounded-full" style={{ padding: '0.5rem 1.5rem', fontSize: '0.875rem' }}><Trash2 size={16} /> Reset App</button>
+         <button onClick={clearData} className="danger rounded-full" style={{ padding: '0.5rem 1.5rem', fontSize: '0.875rem' }}>
+           <Trash2 size={16} /> Reset Course Data
+         </button>
       </motion.div>
 
     </motion.div>
