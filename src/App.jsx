@@ -811,10 +811,10 @@ export default function App() {
 
       {/* TOP COURSE SWITCHER & HEADER BAR */}
       <motion.div 
-        className="glass-panel bento-header flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3.5"
+        className="glass-panel bento-header"
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
       >
-        <div className="flex items-center gap-3">
+        <div className="bento-header-left">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
                style={{ background: currentCourse === 'cainter' ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'linear-gradient(135deg, #2563eb, #06b6d4)' }}>
             {currentCourse === 'cainter' ? <Briefcase size={20} className="text-white"/> : <GraduationCap size={20} className="text-white"/>}
@@ -838,17 +838,17 @@ export default function App() {
         </div>
 
         {/* COURSE SWITCHER BUTTONS */}
-        <div className="course-switcher-pill flex items-center p-1 rounded-2xl w-full sm:w-auto">
+        <div className="course-switcher-pill">
           <button
             onClick={() => switchCourse('cbse')}
-            className={`course-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 ${currentCourse === 'cbse' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
+            className={`course-btn ${currentCourse === 'cbse' ? 'active-cbse' : ''}`}
           >
             <GraduationCap size={15} />
             <span>CBSE Class 10</span>
           </button>
           <button
             onClick={() => switchCourse('cainter')}
-            className={`course-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 ${currentCourse === 'cainter' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
+            className={`course-btn ${currentCourse === 'cainter' ? 'active-ca' : ''}`}
           >
             <Briefcase size={15} />
             <span>CA Intermediate</span>
@@ -976,18 +976,18 @@ export default function App() {
       {activeTab === 'stats' && (
         <>
           <div className="bento-stats-row">
-            <motion.div className="glass-panel bento-chart-1 flex flex-col justify-center items-center"
+            <motion.div className="glass-panel bento-chart-1"
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
             >
-               <p className="text-xs sm:text-sm text-slate-400 mb-1 flex items-center font-medium"><Clock size={15} className="mr-1.5"/> Today's Focus</p>
-               <h3 className="text-2xl sm:text-4xl font-extrabold text-blue-400 tracking-tight">{formatTime(todayStudyTime)}</h3>
+               <p className="stat-label"><Clock size={16}/> Today's Focus</p>
+               <h3 className="stat-value text-blue-400">{formatTime(todayStudyTime)}</h3>
             </motion.div>
             
-            <motion.div className="glass-panel bento-chart-2 flex flex-col justify-center items-center"
+            <motion.div className="glass-panel bento-chart-2"
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
             >
-               <p className="text-xs sm:text-sm text-slate-400 mb-1 flex items-center font-medium"><Target size={15} className="mr-1.5"/> Total Focus</p>
-               <h3 className="text-2xl sm:text-4xl font-extrabold text-green-400 tracking-tight">{formatTime(totalStudyTime)}</h3>
+               <p className="stat-label"><Target size={16}/> Total Focus</p>
+               <h3 className="stat-value text-green-400">{formatTime(totalStudyTime)}</h3>
             </motion.div>
           </div>
 
