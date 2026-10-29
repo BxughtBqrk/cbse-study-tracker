@@ -811,19 +811,18 @@ export default function App() {
 
       {/* TOP COURSE SWITCHER & HEADER BAR */}
       <motion.div 
-        className="glass-panel flex flex-wrap justify-between items-center gap-4 py-4 px-6"
-        style={{ gridColumn: '1 / -1' }}
+        className="glass-panel bento-header flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3.5"
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
                style={{ background: currentCourse === 'cainter' ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'linear-gradient(135deg, #2563eb, #06b6d4)' }}>
-            {currentCourse === 'cainter' ? <Briefcase size={22} className="text-white"/> : <GraduationCap size={22} className="text-white"/>}
+            {currentCourse === 'cainter' ? <Briefcase size={20} className="text-white"/> : <GraduationCap size={20} className="text-white"/>}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight mb-0">Focus Tracker</h1>
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-0">Focus Tracker</h1>
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider whitespace-nowrap"
                     style={{ 
                       background: currentCourse === 'cainter' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)',
                       color: currentCourse === 'cainter' ? '#c4b5fd' : '#93c5fd',
@@ -832,27 +831,27 @@ export default function App() {
                 {DEFAULT_COURSES[currentCourse]?.shortName || currentCourse}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              {currentCourse === 'cainter' ? 'Chartered Accountancy Intermediate Suite' : 'CBSE Board Prep Suite'} • {subjects.length} Subjects • {totalChapters} Chapters
+            <p className="text-xs text-slate-400 truncate">
+              {currentCourse === 'cainter' ? 'Chartered Accountancy Intermediate' : 'CBSE Board Prep Suite'} • {subjects.length} Subjects • {totalChapters} Chapters
             </p>
           </div>
         </div>
 
         {/* COURSE SWITCHER BUTTONS */}
-        <div className="course-switcher-pill flex items-center p-1 rounded-2xl">
+        <div className="course-switcher-pill flex items-center p-1 rounded-2xl w-full sm:w-auto">
           <button
             onClick={() => switchCourse('cbse')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-300 ${currentCourse === 'cbse' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
+            className={`course-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 ${currentCourse === 'cbse' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
           >
             <GraduationCap size={15} />
-            CBSE Class 10
+            <span>CBSE Class 10</span>
           </button>
           <button
             onClick={() => switchCourse('cainter')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-300 ${currentCourse === 'cainter' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
+            className={`course-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 ${currentCourse === 'cainter' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white border-transparent'}`}
           >
             <Briefcase size={15} />
-            CA Intermediate
+            <span>CA Intermediate</span>
           </button>
         </div>
       </motion.div>
@@ -883,20 +882,20 @@ export default function App() {
           </div>
         )}
 
-        <div className="text-center mb-6">
-          <h2 className="mb-2 text-2xl font-extrabold tracking-tight">Focus Timer</h2>
-          <div className="flex justify-center gap-2 mt-4">
-            <button className={`text-xs py-1 px-4 rounded-full ${!isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent border border-white/20'}`} onClick={() => setIsPomodoro(false)}>Stopwatch</button>
-            <button className={`text-xs py-1 px-4 rounded-full ${isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent border border-white/20'}`} onClick={() => setIsPomodoro(true)}>Pomodoro</button>
+        <div className="text-center mb-4 sm:mb-6">
+          <h2 className="mb-2 text-xl sm:text-2xl font-extrabold tracking-tight">Focus Timer</h2>
+          <div className="flex justify-center gap-2 mt-3">
+            <button className={`text-xs py-1.5 px-4 rounded-full font-semibold transition-all ${!isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent text-slate-400 border border-white/20 hover:text-white'}`} onClick={() => setIsPomodoro(false)}>Stopwatch</button>
+            <button className={`text-xs py-1.5 px-4 rounded-full font-semibold transition-all ${isPomodoro ? 'bg-white text-slate-900 shadow-md' : 'bg-transparent text-slate-400 border border-white/20 hover:text-white'}`} onClick={() => setIsPomodoro(true)}>Pomodoro</button>
           </div>
         </div>
 
-        <div className="flex-col items-center mb-8">
-          <div className="w-full max-w-[280px] mb-6 flex flex-col gap-3">
-            <select value={activeSubject} onChange={(e) => setActiveSubject(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-lg p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
+        <div className="flex flex-col items-center mb-6 sm:mb-8 w-full">
+          <div className="w-full max-w-[320px] mb-5 flex flex-col gap-2.5">
+            <select value={activeSubject} onChange={(e) => setActiveSubject(e.target.value)} disabled={isRunning} className="w-full text-xs sm:text-sm rounded-xl p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <select value={activeChapter} onChange={(e) => setActiveChapter(e.target.value)} disabled={isRunning} className="w-full text-sm rounded-lg p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
+            <select value={activeChapter} onChange={(e) => setActiveChapter(e.target.value)} disabled={isRunning} className="w-full text-xs sm:text-sm rounded-xl p-2.5 bg-slate-800/80 border border-slate-700 text-white outline-none hover:border-slate-600 transition-colors">
               {currentSubObj.books.map(book => (
                 <optgroup key={book.name} label={book.name}>
                   {book.chapters.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -905,22 +904,22 @@ export default function App() {
             </select>
           </div>
 
-          <div className="text-center mb-8 flex justify-center gap-4">
+          <div className="text-center mb-6 flex flex-wrap justify-center gap-2.5 sm:gap-4 w-full">
             <button 
-              className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10" 
-              style={{ color: isFaceTrackingEnabled ? '#10b981' : '#94a3b8', padding: '0.5rem 1rem' }}
+              className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10 transition-colors py-2 px-3 sm:px-4" 
+              style={{ color: isFaceTrackingEnabled ? '#10b981' : '#94a3b8' }}
               onClick={() => setIsFaceTrackingEnabled(!isFaceTrackingEnabled)}
             >
-              {isFaceTrackingEnabled ? <Eye size={14} className="mr-2"/> : <EyeOff size={14} className="mr-2"/>}
+              {isFaceTrackingEnabled ? <Eye size={14} className="mr-1.5"/> : <EyeOff size={14} className="mr-1.5"/>}
               AI Focus
             </button>
             <button 
-              className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10" 
-              style={{ color: isHostageMode ? '#ef4444' : '#94a3b8', padding: '0.5rem 1rem' }}
+              className="text-xs flex items-center justify-center rounded-full border-0 bg-white/5 hover:bg-white/10 transition-colors py-2 px-3 sm:px-4" 
+              style={{ color: isHostageMode ? '#ef4444' : '#94a3b8' }}
               onClick={() => setIsHostageMode(!isHostageMode)}
               disabled={isRunning}
             >
-              <Smartphone size={14} className="mr-2"/>
+              <Smartphone size={14} className="mr-1.5"/>
               Hostage Mode
             </button>
           </div>
@@ -928,7 +927,7 @@ export default function App() {
           {isHostageMode && !isPhoneConnected && hostageSessionId ? (
              <motion.div 
                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-               className="flex flex-col items-center justify-center mb-8 bg-slate-900/60 p-4 rounded-2xl border border-red-500/30 h-[250px] w-[250px] mx-auto"
+               className="flex flex-col items-center justify-center mb-6 bg-slate-900/60 p-4 rounded-2xl border border-red-500/30 h-[230px] w-full max-w-[250px] mx-auto"
              >
                <p className="text-xs text-red-400 mb-3 text-center font-medium leading-tight">Scan to lock your phone<br/>and start timer.</p>
                <div className="p-2 bg-white rounded-xl shadow-lg">
@@ -937,67 +936,69 @@ export default function App() {
              </motion.div>
           ) : (
             <motion.div 
-              className={`timer-circle mt-4 ${isRunning ? 'active' : ''}`}
+              className={`timer-circle ${isRunning ? 'active' : ''}`}
               style={{ '--current-color': isBreak ? '#10b981' : currentSubObj.color }}
               animate={{ scale: isRunning ? 1.02 : 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 10 }}
             >
-              {isBreak && <span className="absolute top-8 text-sm font-extrabold tracking-widest text-[#10b981]">BREAK</span>}
+              {isBreak && <span className="absolute top-6 sm:top-8 text-xs sm:text-sm font-extrabold tracking-widest text-[#10b981]">BREAK</span>}
               <span className="timer-time font-outfit">{formatTime(time)}</span>
             </motion.div>
           )}
 
-          <div className="flex gap-4 mt-4">
-            <button className={isRunning ? "bg-white/10 text-white border border-white/20" : "primary"} onClick={toggleTimer}>
-              {isRunning ? <Pause size={20} /> : <Play size={20} />}
-              {isRunning ? 'Pause' : 'Start Focus'}
+          <div className="flex justify-center gap-3 mt-4 w-full max-w-[320px] mx-auto">
+            <button className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold transition-all ${isRunning ? "bg-white/10 text-white border border-white/20" : "primary"}`} onClick={toggleTimer}>
+              {isRunning ? <Pause size={18} /> : <Play size={18} />}
+              <span>{isRunning ? 'Pause' : 'Start Focus'}</span>
             </button>
             {((!isPomodoro && time > 0) || (isPomodoro && time < 1500 && !isBreak) || isBreak) && (
-              <button className="danger" onClick={finishSession}><Square size={20} /> Finish</button>
+              <button className="danger flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold" onClick={finishSession}><Square size={16} /> Finish</button>
             )}
           </div>
         </div>
 
         {isFaceTrackingEnabled && isRunning && !isBreak && (
-          <div className="absolute bottom-4 right-4 w-24 h-24 rounded-xl overflow-hidden border-2 border-white/10 opacity-40 z-0 shadow-lg">
+          <div className="absolute bottom-4 right-4 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-white/10 opacity-40 z-0 shadow-lg">
              <Webcam audio={false} ref={webcamRef} className="w-full h-full object-cover" />
           </div>
         )}
       </motion.div>
 
       {/* TABS TILE */}
-      <motion.div className="bento-tabs flex gap-4"
+      <motion.div className="bento-tabs flex gap-2 w-full"
         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
       >
-        <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}><BarChart3 size={18} className="inline mr-2" /> Analytics</button>
-        <button className={`tab ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}><List size={18} className="inline mr-2" /> Syllabus & Chapters</button>
+        <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}><BarChart3 size={16} className="inline mr-1.5" /> Analytics</button>
+        <button className={`tab ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}><List size={16} className="inline mr-1.5" /> Syllabus & Chapters</button>
       </motion.div>
 
       {/* RIGHT PANEL CONTENT */}
       {activeTab === 'stats' && (
         <>
-          <motion.div className="glass-panel bento-chart-1 flex flex-col justify-center items-center"
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-          >
-             <p className="text-sm text-slate-400 mb-1 flex items-center font-medium"><Clock size={16} className="mr-2"/> &nbsp; Today's Focus</p>
-             <h3 className="text-4xl font-extrabold text-blue-400 tracking-tight">{formatTime(todayStudyTime)}</h3>
-          </motion.div>
-          
-          <motion.div className="glass-panel bento-chart-2 flex flex-col justify-center items-center"
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-          >
-             <p className="text-sm text-slate-400 mb-1 flex items-center font-medium"><Target size={16} className="mr-2"/> &nbsp; Total Focus</p>
-             <h3 className="text-4xl font-extrabold text-green-400 tracking-tight">{formatTime(totalStudyTime)}</h3>
-          </motion.div>
+          <div className="bento-stats-row">
+            <motion.div className="glass-panel bento-chart-1 flex flex-col justify-center items-center"
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
+            >
+               <p className="text-xs sm:text-sm text-slate-400 mb-1 flex items-center font-medium"><Clock size={15} className="mr-1.5"/> Today's Focus</p>
+               <h3 className="text-2xl sm:text-4xl font-extrabold text-blue-400 tracking-tight">{formatTime(todayStudyTime)}</h3>
+            </motion.div>
+            
+            <motion.div className="glass-panel bento-chart-2 flex flex-col justify-center items-center"
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
+            >
+               <p className="text-xs sm:text-sm text-slate-400 mb-1 flex items-center font-medium"><Target size={15} className="mr-1.5"/> Total Focus</p>
+               <h3 className="text-2xl sm:text-4xl font-extrabold text-green-400 tracking-tight">{formatTime(totalStudyTime)}</h3>
+            </motion.div>
+          </div>
 
           <motion.div className="glass-panel bento-chart-wide flex flex-col"
              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           >
-            <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-               <h3 className="text-lg font-bold text-white">60-Day Heatmap</h3>
+            <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-3">
+               <h3 className="text-base sm:text-lg font-bold text-white">60-Day Heatmap</h3>
                <span className="text-xs text-slate-400">Study Consistency</span>
             </div>
-            <div className="heatmap-grid">
+            <div className="heatmap-grid overflow-x-auto pb-2">
               {heatmapData.map((d, i) => (
                 <div key={i} className={`heatmap-cell level-${d.level}`} title={`${d.date}: ${formatTime(d.duration)}`} />
               ))}
@@ -1005,11 +1006,11 @@ export default function App() {
 
             {pieData.length > 0 && (
               <div className="mt-4 pt-4 border-t border-white/5">
-                <h3 className="text-lg font-bold text-white mb-4">Time Distribution</h3>
-                <div style={{ width: '100%', height: 220 }}>
+                <h3 className="text-base sm:text-lg font-bold text-white mb-3">Time Distribution</h3>
+                <div style={{ width: '100%', height: 200 }}>
                   <ResponsiveContainer>
                     <PieChart>
-                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4}>
                         {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                       </Pie>
                       <Tooltip formatter={(val) => formatTime(val)} contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} itemStyle={{color: '#fff'}} />
@@ -1019,9 +1020,9 @@ export default function App() {
               </div>
             )}
             
-            <div className="mt-8 pt-6 border-t border-white/5">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-white flex items-center"><BrainCircuit size={18} className="mr-2 text-blue-400"/> Exam Prediction</h3>
+            <div className="mt-6 pt-5 border-t border-white/5">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+                <h3 className="text-base sm:text-lg font-bold text-white flex items-center"><BrainCircuit size={18} className="mr-2 text-blue-400 flex-shrink-0"/> Exam Prediction</h3>
                 <input 
                   type="date" 
                   value={examDate} 
@@ -1030,24 +1031,24 @@ export default function App() {
                     localStorage.setItem('study_exam_date_' + currentCourse, e.target.value);
                     if (currentCourse === 'cbse') localStorage.setItem('cbse_exam_date', e.target.value);
                   }} 
-                  className="text-sm p-2 rounded-lg bg-slate-800 text-white border border-slate-700 outline-none" 
+                  className="text-xs sm:text-sm p-2 rounded-xl bg-slate-800 text-white border border-slate-700 outline-none w-full sm:w-auto" 
                 />
               </div>
-              <p className={`text-sm flex items-center p-4 rounded-xl font-medium ${prediction.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' : prediction.status === 'danger' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-300'}`}>
-                {prediction.status === 'success' && <CheckCircle2 size={18} className="mr-2"/>}
-                {prediction.status === 'danger' && <AlertTriangle size={18} className="mr-2"/>}
-                {prediction.msg}
+              <p className={`text-xs sm:text-sm flex items-center p-3 sm:p-4 rounded-xl font-medium leading-relaxed ${prediction.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' : prediction.status === 'danger' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-300'}`}>
+                {prediction.status === 'success' && <CheckCircle2 size={16} className="mr-2 flex-shrink-0"/>}
+                {prediction.status === 'danger' && <AlertTriangle size={16} className="mr-2 flex-shrink-0"/>}
+                <span>{prediction.msg}</span>
               </p>
             </div>
             
             {revisionsDue.length > 0 && (
-              <div className="mt-6 p-5 rounded-xl border border-amber-500/20 bg-amber-500/10">
-                <h3 className="flex items-center text-base mb-3 text-amber-400 font-bold"><BrainCircuit size={18} className="mr-2"/> SRS Revisions Due Today</h3>
-                <ul className="text-sm space-y-2">
+              <div className="mt-5 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10">
+                <h3 className="flex items-center text-sm sm:text-base mb-2.5 text-amber-400 font-bold"><BrainCircuit size={16} className="mr-1.5 flex-shrink-0"/> SRS Revisions Due Today</h3>
+                <ul className="text-xs sm:text-sm space-y-2">
                   {revisionsDue.map((rev, i) => (
-                    <li key={i} className="flex justify-between items-center bg-black/20 p-3 rounded-lg">
-                      <span className="font-medium">{rev.title}</span>
-                      <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-300 rounded-md">{rev.days} days ago</span>
+                    <li key={i} className="flex justify-between items-center bg-black/20 p-2.5 rounded-lg">
+                      <span className="font-medium truncate mr-2">{rev.title}</span>
+                      <span className="text-[11px] px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-md whitespace-nowrap">{rev.days} days ago</span>
                     </li>
                   ))}
                 </ul>
@@ -1058,15 +1059,14 @@ export default function App() {
       )}
 
       {activeTab === 'syllabus' && (
-        <motion.div className="glass-panel flex-col"
-           style={{ gridColumn: '2 / 4', gridRow: '2 / 4', justifyContent: 'flex-start', alignSelf: 'start' }}
+        <motion.div className="glass-panel bento-syllabus flex-col"
            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         >
           {/* HEADER WITH EDIT TOGGLE */}
-          <div className="flex flex-wrap justify-between items-center gap-3 mb-6 pb-4 border-b border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 pb-4 border-b border-white/5 w-full">
             <div>
-              <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
-                {DEFAULT_COURSES[currentCourse]?.name || currentCourse} Syllabus
+              <h2 className="text-lg sm:text-xl font-bold mb-1 flex items-center gap-2 flex-wrap">
+                <span>{DEFAULT_COURSES[currentCourse]?.name || currentCourse} Syllabus</span>
                 {isEditingSyllabus && <span className="edit-mode-badge"><Edit2 size={12}/> Editing Mode</span>}
               </h2>
               <p className="text-xs text-slate-400">
@@ -1074,7 +1074,7 @@ export default function App() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
               {isEditingSyllabus ? (
                 <>
                   <button 
@@ -1100,7 +1100,7 @@ export default function App() {
               ) : (
                 <button 
                   onClick={() => setIsEditingSyllabus(true)} 
-                  className="text-xs py-2 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/10 shadow-sm"
+                  className="text-xs py-2 px-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/10 shadow-sm"
                 >
                   <Edit2 size={14} className="text-amber-400" />
                   Customize Syllabus
@@ -1111,9 +1111,9 @@ export default function App() {
 
           {/* EDIT MODE ACTIVE BANNER */}
           {isEditingSyllabus && (
-            <div className="p-4 mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+            <div className="p-3.5 sm:p-4 mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 flex-shrink-0">
                   <Sparkles size={18} />
                 </div>
                 <div>
@@ -1126,7 +1126,7 @@ export default function App() {
 
           {/* ADD SUBJECT FORM DRAWER */}
           {isAddingSubject && (
-            <div className="p-5 mb-6 rounded-2xl bg-slate-800/90 border border-blue-500/40 shadow-xl">
+            <div className="p-4 sm:p-5 mb-5 rounded-2xl bg-slate-800/90 border border-blue-500/40 shadow-xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Plus size={16} className="text-blue-400" /> Add New Subject to {DEFAULT_COURSES[currentCourse]?.shortName}
@@ -1144,7 +1144,7 @@ export default function App() {
                   className="text-sm p-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none focus:border-blue-500"
                   autoFocus
                 />
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="text-xs text-slate-400">Theme Color:</span>
                   {PRESET_COLORS.map(c => (
                     <button
@@ -1165,7 +1165,7 @@ export default function App() {
           )}
 
           {/* SUBJECTS HORIZONTAL NAV PILLS */}
-          <div className="subject-nav-scroll mb-6">
+          <div className="subject-nav-scroll mb-5">
             {subjects.map(s => {
               const prog = calculateSubjectProgress(s);
               const isActive = s.id === activeSubject;
@@ -1187,7 +1187,7 @@ export default function App() {
           </div>
           
           {/* ACTIVE SUBJECT OVERVIEW CARD */}
-          <div className="mb-6 p-6 rounded-2xl bg-slate-800/50 border border-white/5">
+          <div className="mb-5 p-4 sm:p-6 rounded-2xl bg-slate-800/50 border border-white/5">
             <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
               <div className="flex items-center gap-3">
                 <span className="w-4 h-4 rounded-full" style={{ backgroundColor: currentSubObj.color }} />
@@ -1408,18 +1408,17 @@ export default function App() {
       )}
 
       {/* BOTTOM CONTROL BAR */}
-      <motion.div className="mt-4 flex flex-wrap justify-between items-center border-t border-white/5 pt-6 gap-4" style={{ gridColumn: '1 / -1' }}
+      <motion.div className="bento-footer mt-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center border-t border-white/5 pt-4 gap-3 w-full"
          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
       >
-         <div className="flex gap-2">
-           <button onClick={linkDevice} className="text-sm py-2 px-4 rounded-full flex items-center font-medium" style={{ background: syncId ? '#10b98120' : 'rgba(255,255,255,0.05)', border: syncId ? '1px solid #10b98150' : '1px solid transparent' }}>
-             {syncId ? <Cloud size={16} className="mr-2 text-emerald-400" /> : <CloudOff size={16} className="mr-2 text-slate-400" />}
-             {syncId ? `Synced: ${syncId}` : 'Link Cloud Device'}
-             {isSyncing && <span className="ml-2 text-xs opacity-50">(syncing)</span>}
-           </button>
-         </div>
-         <button onClick={clearData} className="danger rounded-full" style={{ padding: '0.5rem 1.5rem', fontSize: '0.875rem' }}>
-           <Trash2 size={16} /> Reset Course Data
+         <button onClick={linkDevice} className="text-xs sm:text-sm py-2.5 px-4 rounded-xl flex items-center justify-center font-medium w-full sm:w-auto" style={{ background: syncId ? '#10b98120' : 'rgba(255,255,255,0.05)', border: syncId ? '1px solid #10b98150' : '1px solid transparent' }}>
+           {syncId ? <Cloud size={16} className="mr-2 text-emerald-400 flex-shrink-0" /> : <CloudOff size={16} className="mr-2 text-slate-400 flex-shrink-0" />}
+           <span className="truncate">{syncId ? `Synced: ${syncId}` : 'Link Cloud Device'}</span>
+           {isSyncing && <span className="ml-1 text-xs opacity-50">(syncing)</span>}
+         </button>
+         <button onClick={clearData} className="danger rounded-xl flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs sm:text-sm w-full sm:w-auto">
+           <Trash2 size={15} className="flex-shrink-0" />
+           <span>Reset Course Data</span>
          </button>
       </motion.div>
 
